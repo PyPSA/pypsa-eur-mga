@@ -1,0 +1,26 @@
+logging_level: INFO
+
+scenario:
+  clusters: [37]
+  ll: ['vopt']
+  opts: [Co2L0.3-24H]
+
+alternative:
+  epsilon: [0.01]
+
+solving:
+  options:
+    formulation: kirchhoff
+    min_iterations: 0
+    max_iterations: 1
+    clip_p_max_pu: 0.01
+  solver:
+    name: gurobi
+    threads: 4
+    method: 2 # barrier
+    crossover: 0
+    BarConvTol: 1.e-5
+    FeasibilityTol: 1.e-6
+    AggFill: 0
+    PreDual: 0
+    GURO_PAR_BARDENSETHRESH: 200
