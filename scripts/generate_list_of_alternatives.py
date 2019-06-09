@@ -27,8 +27,8 @@ def get_mga_groups(n):
             for carrier in country_carriers:
                 mga_list.append(' '.join([country, carrier]))
         mga_groups[comp] = mga_list
-    mga_groups['lines'] = ['all']
-    mga_groups['links'] = ['all']
+    mga_groups['lines'] = [''] # all
+    mga_groups['links'] = [''] # all
 
     return mga_groups
 

@@ -32,7 +32,20 @@ def modify_model(n, var_type, var_name, obj_sense):
 
     def set_alternative_objective(n, var_type, var_name, obj_sense):
         n.model.del_component("objective")
-        expr = getattr(n.model,var_type)[var_name]
+        
+        variables = []
+        for var in getattr(n.model,var_type):
+            if all(token in var for token in var_name.split(' ')):
+                variables.append(var)
+
+        m_to_n = {'link_p_nom': 'links',
+                  'passive_branch_s_nom': 'lines'}
+            
+        if var_type in ['link_p_nom', 'passive_branch_s_nom']:
+            expr = sum(getattr(n,m_to_n[var_type]).length[var]*getattr(n.model,var_type)[var] for var in variables)
+        else:
+            expr = sum(getattr(n.model,var_type)[var] for var in variables)
+            
         sense = obj_sense
         n.model.objective = Objective(expr=expr, sense=sense)
 
