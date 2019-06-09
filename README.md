@@ -4,6 +4,8 @@
 
 https://pyomo.readthedocs.io/en/latest/working_models.html
 
+https://snakemake.readthedocs.io/en/stable/snakefiles/rules.html#data-dependent-conditional-execution
+
 quasi-monte-carlo integration with low-discrepancy sequences
 
 https://stackoverflow.com/questions/42761370/set-initial-primal-and-dual-values-for-variables-pyomo
