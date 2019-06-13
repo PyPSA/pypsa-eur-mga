@@ -29,9 +29,6 @@ rule solve_all_bases:
         expand("results/networks/elec_s_{clusters}_l{ll}_{opts}.nc",
                 **config['scenario'])
 
-rule summarize_base:
-
-
 
 # MODELLING TO GENERATE ALTERNATIVES
 
