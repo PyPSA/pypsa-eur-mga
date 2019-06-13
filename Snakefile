@@ -1,3 +1,7 @@
+# TODO: fix environment file
+import os
+os.system("pip install tsam")
+
 configfile: "config.yaml"
 
 wildcard_constraints:
