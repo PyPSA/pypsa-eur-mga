@@ -48,7 +48,7 @@ if __name__ == "__main__":
         n = pypsa.Network(snakemake.input[0])
 
         n = prepare_network(n, solve_opts=snakemake.config['solving']['options'])
-        n = solve_network(n, config=snakemake.config['solving'], solver_log=snakemake.log.solver, opts=opts)
+        n = solve_network(n, config=snakemake.config['solving'], solver_log=snakemake.log.solver, opts=opts, skip_iterating=True)
 
         n.export_to_netcdf(snakemake.output[0])
 
