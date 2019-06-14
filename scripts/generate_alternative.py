@@ -22,12 +22,21 @@ sys.path.insert(0, base_path+"/pypsa-eur/scripts")
 from solve_network import solve_network, prepare_network, patch_pyomo_tmpdir
 
 from pyomo.environ import Constraint, Objective
+from pyomo.core.expr.current import clone_expression 
 
 def modify_model(n, var_type, var_name, obj_sense):
 
     def encode_objective_as_constraint(n):
         epsilon = float(snakemake.wildcards.epsilon)
-        expr = n.model.objective.expr <= (1 + epsilon) * n.objective
+
+        # adding costs of pre-existing infrastructure for suitable base
+        constant =  (n.links.p_nom * n.links.capital_cost).sum() + \
+            (n.generators.p_nom * n.generators.capital_cost).sum() + \
+            (n.lines.s_nom * n.lines.capital_cost).sum() + \
+            (n.stores.e_nom * n.stores.capital_cost).sum() + \
+            (n.storage_units.p_nom * n.storage_units.capital_cost).sum()
+        
+        expr = n.model.objective.expr + constant <= (1 + epsilon) * (n.objective + constant)
         n.model.objective_value_slack = Constraint(expr=expr)
 
     def set_alternative_objective(n, var_type, var_name, obj_sense):
