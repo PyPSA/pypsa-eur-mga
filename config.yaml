@@ -4,10 +4,10 @@ scenario:
   clusters: [30]
   ll: ['vopt']
   snapshots: [100]
-  opts: [Co2L0.05-1H]
+  opts: [Co2L0.05-1H, Co2L0.2-1H]
 
 alternative:
-  epsilon: [0.01]
+  epsilon: [0.01, 0.05]
   category: ['hypercube', 'groups']
 
 solving:
