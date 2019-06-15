@@ -44,19 +44,27 @@ def modify_model(n, var_type, var_name, obj_sense):
         
         variables = []
         for var in getattr(n.model,var_type):
-            if all(token in var for token in var_name.split(' ')):
+            
+            # lines are saved as tuples
+            if type(var) is tuple:
+                var_check = var[1]    
+
+            if all(token in var_check for token in var_name.split(' ')):
                 variables.append(var)
+
+        print(variables)
 
         m_to_n = {'link_p_nom': 'links',
                   'passive_branch_s_nom': 'lines'}
             
         if var_type in ['link_p_nom', 'passive_branch_s_nom']:
-            expr = sum(getattr(n,m_to_n[var_type]).length[var]*getattr(n.model,var_type)[var] for var in variables)
+            expr = sum(getattr(n,m_to_n[var_type]).length[var[1]]*getattr(n.model,var_type)[var] for var in variables)
         else:
             expr = sum(getattr(n.model,var_type)[var] for var in variables)
             
         sense = obj_sense
         n.model.objective = Objective(expr=expr, sense=sense)
+        n.model.objective.pprint()
 
     def set_initial_values(n):
         set_inital_primal_values(n)
@@ -132,7 +140,7 @@ if __name__ == "__main__":
 
     def translate_mga_opts(mga_opts):
 
-        network_type_names = ['generators', 'storage_units', 'stores', 'links', 'lines']
+        network_type_names = ['generators', 'storage_units', 'stores', 'lines', 'links']
         model_type_names = ['generator_p_nom', 'storage_p_nom', 'store_e_nom', 'passive_branch_s_nom', 'link_p_nom']
         type_names_dict = dict(zip(network_type_names, model_type_names))
         sense_dict = {'max': -1, 'min': 1}
