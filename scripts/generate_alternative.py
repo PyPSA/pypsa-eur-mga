@@ -48,11 +48,11 @@ def modify_model(n, var_type, var_name, obj_sense):
             # lines are saved as tuples
             if type(var) is tuple:
                 var_check = var[1]    
+            else:
+                var_check = var
 
             if all(token in var_check for token in var_name.split(' ')):
                 variables.append(var)
-
-        print(variables)
 
         m_to_n = {'link_p_nom': 'links',
                   'passive_branch_s_nom': 'lines'}
