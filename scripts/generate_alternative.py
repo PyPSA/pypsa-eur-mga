@@ -58,7 +58,8 @@ def modify_model(n, var_type, var_name, obj_sense):
                   'passive_branch_s_nom': 'lines'}
             
         if var_type in ['link_p_nom', 'passive_branch_s_nom']:
-            expr = sum(getattr(n,m_to_n[var_type]).length[var[1]]*getattr(n.model,var_type)[var] for var in variables)
+            index = var[1] if var_type=='passive_branch_s_nom' else var
+            expr = sum(getattr(n,m_to_n[var_type]).length[index]*getattr(n.model,var_type)[var] for var in variables)
         else:
             expr = sum(getattr(n.model,var_type)[var] for var in variables)
             
