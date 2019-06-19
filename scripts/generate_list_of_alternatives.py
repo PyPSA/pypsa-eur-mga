@@ -29,6 +29,7 @@ def get_mga_groups(n):
         mga_groups[comp] = mga_list
     mga_groups['lines'] = [''] # all
     mga_groups['links'] = [''] # all
+    mga_groups['transmission'] = [''] # all transmission
 
     return mga_groups
 
