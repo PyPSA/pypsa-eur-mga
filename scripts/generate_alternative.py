@@ -22,7 +22,7 @@ sys.path.insert(0, base_path+"/pypsa-eur/scripts")
 from solve_network import solve_network, prepare_network, patch_pyomo_tmpdir
 
 from pyomo.environ import Constraint, Objective
-from pyomo.core.expr.current import clone_expression 
+from pyomo.core.expr.current import clone_expression
 
 def modify_model(n, var_type, var_name, obj_sense):
 
@@ -39,30 +39,39 @@ def modify_model(n, var_type, var_name, obj_sense):
         expr = n.model.objective.expr + constant <= (1 + epsilon) * (n.objective + constant)
         n.model.objective_value_slack = Constraint(expr=expr)
 
-    def set_alternative_objective(n, var_type, var_name, obj_sense):
+    def set_alternative_objective(n, var_types, var_name, obj_sense):
+
+        if type(var_types) is str:
+            var_types = [var_types]
+
         n.model.del_component("objective")
-        
-        variables = []
-        for var in getattr(n.model,var_type):
-            
-            # lines are saved as tuples
-            if type(var) is tuple:
-                var_check = var[1]    
+
+        expr = None
+        for var_type in var_types:
+            variables = []
+            for var in getattr(n.model,var_type):
+                
+                # lines are saved as tuples
+                if type(var) is tuple:
+                    var_check = var[1]    
+                else:
+                    var_check = var
+
+                if all(token in var_check for token in var_name.split(' ')):
+                    variables.append(var)
+
+            m_to_n = {'link_p_nom': 'links',
+                    'passive_branch_s_nom': 'lines'}
+
+            if var_type in ['link_p_nom', 'passive_branch_s_nom']:
+                index = var[1] if var_type=='passive_branch_s_nom' else var
+                
+                part_expr = sum(getattr(n,m_to_n[var_type]).length[index]*getattr(n.model,var_type)[var] for var in variables)
             else:
-                var_check = var
+                part_expr = sum(getattr(n.model,var_type)[var] for var in variables)
 
-            if all(token in var_check for token in var_name.split(' ')):
-                variables.append(var)
+            expr = expr + part_expr if expr is not None else part_expr
 
-        m_to_n = {'link_p_nom': 'links',
-                  'passive_branch_s_nom': 'lines'}
-            
-        if var_type in ['link_p_nom', 'passive_branch_s_nom']:
-            index = var[1] if var_type=='passive_branch_s_nom' else var
-            expr = sum(getattr(n,m_to_n[var_type]).length[index]*getattr(n.model,var_type)[var] for var in variables)
-        else:
-            expr = sum(getattr(n.model,var_type)[var] for var in variables)
-            
         sense = obj_sense
         n.model.objective = Objective(expr=expr, sense=sense)
         n.model.objective.pprint()
@@ -141,8 +150,8 @@ if __name__ == "__main__":
 
     def translate_mga_opts(mga_opts):
 
-        network_type_names = ['generators', 'storage_units', 'stores', 'lines', 'links']
-        model_type_names = ['generator_p_nom', 'storage_p_nom', 'store_e_nom', 'passive_branch_s_nom', 'link_p_nom']
+        network_type_names = ['generators', 'storage_units', 'stores', 'lines', 'links', 'transmission']
+        model_type_names = ['generator_p_nom', 'storage_p_nom', 'store_e_nom', 'passive_branch_s_nom', 'link_p_nom', ['passive_branch_s_nom', 'link_p_nom']]
         type_names_dict = dict(zip(network_type_names, model_type_names))
         sense_dict = {'max': -1, 'min': 1}
 
