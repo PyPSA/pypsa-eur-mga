@@ -161,8 +161,8 @@ if __name__ == "__main__":
                 config=snakemake.config['solving'],
                 solver_log=snakemake.log.solver,
                 opts=opts,
-                modification=modify_model,
-                modification_args=mga_opts,
+                extra_functionality=modify_model,
+                extra_functionality_args=mga_opts,
                 skip_iterating=True)
 
         n.export_to_netcdf(snakemake.output[0])
