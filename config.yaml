@@ -1,10 +1,10 @@
 logging_level: INFO
 
 scenario:
-  clusters: [30]
+  clusters: [50, 100, 200, 300]
   ll: ['vopt']
-  snapshots: [100]
-  opts: [Co2L0.05-1H, Co2L0.2-1H]
+  snapshots: [8760]
+  opts: [Co2L0.05-3H, Co2L0.2-3H]
 
 alternative:
   epsilon: [0.01, 0.05]
