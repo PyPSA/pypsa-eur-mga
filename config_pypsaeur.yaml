@@ -3,7 +3,7 @@ logging_level: INFO
 
 summary_dir: results
 
-countries: ['DE'] #['AL', 'AT', 'BA', 'BE', 'BG', 'CH', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI', 'FR', 'GB', 'GR', 'HR', 'HU', 'IE', 'IT', 'LT', 'LU', 'LV', 'ME', 'MK', 'NL', 'NO', 'PL', 'PT', 'RO', 'RS', 'SE', 'SI', 'SK'] 
+countries: ['AL', 'AT', 'BA', 'BE', 'BG', 'CH', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI', 'FR', 'GB', 'GR', 'HR', 'HU', 'IE', 'IT', 'LT', 'LU', 'LV', 'ME', 'MK', 'NL', 'NO', 'PL', 'PT', 'RO', 'RS', 'SE', 'SI', 'SK'] 
 
 snapshots:
   start: "2013-01-01"
@@ -17,10 +17,10 @@ enable:
 electricity:
   voltages: [220., 300., 380.]
   co2limit: 7.75e+7 # 0.05 * 3.1e9*0.5
-  co2base: 0.366e+9 # DE: 0.366e+9 EU: 1.95e+9
+  co2base: 1.65e+9 # DE: 0.366e+9 EU: 1.65e+9
 
   extendable_carriers:
-    Generator: [OCGT]
+    Generator: [OCGT, CCGT]
     StorageUnit: [battery, H2] # [CAES]
 
   max_hours:
