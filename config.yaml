@@ -1,14 +1,14 @@
 logging_level: INFO
 
 scenario:
-  clusters: [50, 100, 200, 300]
+  clusters: [100] # [100,200]
   ll: ['vopt']
-  snapshots: [8760]
-  opts: [Co2L0.05-3H, Co2L0.2-3H]
+  snapshots: [8760] # [8760]
+  opts: [Co2L0.05-3H, Co2L0.2-3H] # [3H, 2H, 1H]
 
-alternative:
-  epsilon: [0.01, 0.05]
-  category: ['hypercube', 'groups']
+alternative:  
+  epsilon: [0.01, 0.05, 0.1]
+  category: ['groups'] # ['hypercube', 'groups']
 
 solving:
   options:
@@ -26,3 +26,5 @@ solving:
     AggFill: 0
     PreDual: 0
     GURO_PAR_BARDENSETHRESH: 200
+
+lines_and_links_separate: false
