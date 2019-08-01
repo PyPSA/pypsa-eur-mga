@@ -48,6 +48,10 @@ if __name__ == '__main__':
 
     n = pypsa.Network(snakemake.input[0])
 
+    # need unique naming between links and lines
+    n.links.index = ["LK{}".format(i) for i in n.links.index]
+    n.lines.index = ["LN{}".format(i) for i in n.lines.index]
+
     target_snapshots = snakemake.wildcards.snapshots
 
     if not (target_snapshots=='8760' or target_snapshots==''):
