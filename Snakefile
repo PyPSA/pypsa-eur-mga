@@ -31,6 +31,7 @@ rule cluster_all_times:
 rule solve_base:
     input: "networks/elec_s_{clusters}_l{ll}_t{snapshots}_{opts}.nc"
     output: "results/networks/elec_s_{clusters}_l{ll}_t{snapshots}_{opts}.nc",
+    benchmark: "logs/elec_s_{clusters}_l{ll}_t{snapshots}_{opts}_time.log"
     log:
         solver="logs/elec_s_{clusters}_l{ll}_t{snapshots}_{opts}_solver.log",
         python="logs/elec_s_{clusters}_l{ll}_t{snapshots}_{opts}_python.log",
@@ -54,6 +55,7 @@ checkpoint generate_list_of_alternatives:
 rule generate_alternative:
     input: "results/networks/elec_s_{clusters}_l{ll}_t{snapshots}_{opts}.nc"
     output: "results/networks/elec_s_{clusters}_l{ll}_t{snapshots}_{opts}_tol{epsilon}_cat-{category}_obj-{objective}.nc"
+    benchmark: "logs/elec_s_{clusters}_l{ll}_t{snapshots}_{opts}_tol{epsilon}_cat-{category}_obj-{objective}_time.log"
     log:
         solver="logs/elec_s_{clusters}_l{ll}_t{snapshots}_{opts}_tol{epsilon}_cat-{category}_obj-{objective}_solver.log",
         python="logs/elec_s_{clusters}_l{ll}_t{snapshots}_{opts}_tol{epsilon}_cat-{category}_obj-{objective}_python.log",
