@@ -1,5 +1,9 @@
 # Geometric analysis of the near-optimal feasible space of energy system models
 
+## TODOs
+
+- run experiments
+
 ## Notes
 
 https://pyomo.readthedocs.io/en/latest/working_models.html
