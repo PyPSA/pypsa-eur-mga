@@ -1,5 +1,6 @@
 import pypsa
 import pandas as pd
+import numpy as np
 
 def get_mga_components(n):
     extendable_components = {
@@ -13,24 +14,52 @@ def get_mga_components(n):
 
 
 def get_mga_groups(n):
+
+    def append_supertype_carriers(carriers):
+        # wind to include onwind, offwind-ac, offwind-dc
+        # offwind to include offwind-ac, offwind-dc
+        supertype_carriers = ["wind", "offwind"]
+        for sc in supertype_carriers:
+            if any([sc in c for c in carriers]):
+                carriers.append(sc)
+        return carriers
+    
     mga_groups = {}
-    countries = pd.Series([b[:2] for b in n.buses.index]).unique()
     for comp in ['generators', 'storage_units']:
-        carriers = getattr(n, comp).loc[getattr(n, comp).p_nom_extendable].carrier.unique()
-        mga_list = list(carriers) + list(countries)
+        countries = list(np.unique([b[:2] for b in getattr(n, comp).bus]))
+        carriers = list(getattr(n, comp).loc[getattr(n, comp).p_nom_extendable].carrier.unique())
+        carriers = append_supertype_carriers(carriers)    
+        
+        mga_list = carriers  # + countries
         
         for country in countries:
-            country_carriers = getattr(n, comp).loc[
+            country_carriers = list(getattr(n, comp).loc[
                 getattr(n, comp).p_nom_extendable &
                 [country in x for x in getattr(n, comp).index]
-            ].carrier.unique()
+            ].carrier.unique())
+            country_carriers = append_supertype_carriers(country_carriers)
             for carrier in country_carriers:
                 mga_list.append(' '.join([country, carrier]))
         mga_groups[comp] = mga_list
-    mga_groups['lines'] = [''] # all
-    mga_groups['links'] = [''] # all
-    mga_groups['transmission'] = [''] # all transmission
+    
+    def country_pair(l):
+        country_a = l.bus0[:2]
+        country_b = l.bus1[:2]
+        if country_a == country_b:
+            return country_b
+        elif country_a > country_b:
+            return "{} {}".format(country_b, country_a)
+        else:
+            return "{} {}".format(country_a, country_b)
+    
 
+    mga_groups['lines'] = list(n.lines.apply(country_pair, axis=1).unique()) + [''] # all
+    mga_groups['links'] = list(n.links.apply(country_pair, axis=1).unique()) + [''] # all
+    mga_groups['transmission'] = list(np.unique(np.concatenate((mga_groups['lines'], mga_groups['links']))))
+    if not snakemake.config['lines_and_links_separate']:
+        mga_groups['lines'] = []
+        mga_groups['links'] = []
+    
     return mga_groups
 
 def mga_list_from_class(component_type, component_names):
