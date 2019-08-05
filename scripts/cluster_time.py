@@ -48,7 +48,7 @@ if __name__ == '__main__':
 
     n = pypsa.Network(snakemake.input[0])
 
-    # need unique naming between links and lines
+    # need unique naming between links and lines (for if objective includes lines and links)
     n.links.index = ["LK{}".format(i) for i in n.links.index]
     n.lines.index = ["LN{}".format(i) for i in n.lines.index]
 

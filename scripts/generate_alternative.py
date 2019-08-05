@@ -15,16 +15,18 @@ pypsa.pf.logger.setLevel(logging.WARNING)
 
 from vresutils.benchmark import memory_logger
 
+from pyomo.environ import Constraint, Objective
+from pyomo.core.expr.current import clone_expression
+
 # Add pypsa-eur scripts to path for import
 base_path = "/".join(os.getcwd().split("/")[:-1])
 sys.path.insert(0, base_path+"/pypsa-eur/scripts")
 
 from solve_network import solve_network, prepare_network, patch_pyomo_tmpdir
 
-from pyomo.environ import Constraint, Objective
-from pyomo.core.expr.current import clone_expression
 
 def modify_model(n, var_type, var_name, obj_sense):
+
 
     def encode_objective_as_constraint(n):
         epsilon = float(snakemake.wildcards.epsilon)
@@ -39,6 +41,7 @@ def modify_model(n, var_type, var_name, obj_sense):
         expr = n.model.objective.expr + constant <= (1 + epsilon) * (n.objective + constant)
         n.model.objective_value_slack = Constraint(expr=expr)
 
+
     def set_alternative_objective(n, var_types, var_name, obj_sense):
 
         if type(var_types) is str:
@@ -51,7 +54,7 @@ def modify_model(n, var_type, var_name, obj_sense):
             variables = []
             for var in getattr(n.model,var_type):
                 
-                # line variables are saved as tuples ('Line', 'var')
+                # line variables are saved with tuple index ('Line', 'var')
                 if type(var) is tuple:
                     var_check = var[1]    
                 else:
@@ -78,10 +81,12 @@ def modify_model(n, var_type, var_name, obj_sense):
         n.model.objective = Objective(expr=expr, sense=sense)
         n.model.objective.pprint()
 
+
     def set_initial_values(n):
         set_inital_primal_values(n)
         set_inital_dual_values(n)
 
+    # TODO: set initial values to upper/lower capacity limits of variables for max/min
     def set_inital_primal_values(n):
 
         for i in n.generators.loc[n.generators.p_nom_extendable].index:
@@ -119,6 +124,7 @@ def modify_model(n, var_type, var_name, obj_sense):
             # for t in n.snapshots:
             #     n.model.passive_branch_p['Line',i,t].value = n.lines_t.p0.loc[t,i]
 
+    # TODO: implement
     def set_inital_dual_values(n):
         pass
     
@@ -126,6 +132,7 @@ def modify_model(n, var_type, var_name, obj_sense):
     encode_objective_as_constraint(n)
     set_alternative_objective(n, var_type, var_name, obj_sense)
     set_initial_values(n)
+
 
 if __name__ == "__main__":
     # Detect running outside of snakemake and mock snakemake for testing
@@ -149,6 +156,7 @@ if __name__ == "__main__":
     opts = [o
             for o in snakemake.wildcards.opts.split('-')
             if not re.match(r'^\d+h$', o, re.IGNORECASE)]
+
 
     def translate_mga_opts(n, mga_opts):
 
@@ -193,6 +201,7 @@ if __name__ == "__main__":
 
 
     with memory_logger(filename=getattr(snakemake.log, 'memory', None), interval=30.) as mem:
+        
         n = pypsa.Network(snakemake.input[0])
         
         mga_opts = translate_mga_opts(n, snakemake.wildcards.objective.split('+'))

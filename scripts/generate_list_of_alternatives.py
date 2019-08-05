@@ -13,7 +13,7 @@ def get_mga_components(n):
     return extendable_components
 
 
-def get_mga_groups(n):
+def get_mga_component_groups(n):
 
     def append_supertype_carriers(carriers):
         # wind to include onwind, offwind-ac, offwind-dc
@@ -43,6 +43,8 @@ def get_mga_groups(n):
         mga_groups[comp] = mga_list
     
     def country_pair(l):
+        # ordering of country pair is unique
+        # by sorting alphabetically
         country_a = l.bus0[:2]
         country_b = l.bus1[:2]
         if country_a == country_b:
@@ -53,8 +55,8 @@ def get_mga_groups(n):
             return "{} {}".format(country_a, country_b)
     
 
-    mga_groups['lines'] = list(n.lines.apply(country_pair, axis=1).unique()) + [''] # all
-    mga_groups['links'] = list(n.links.apply(country_pair, axis=1).unique()) + [''] # all
+    mga_groups['lines'] = list(n.lines.apply(country_pair, axis=1).unique()) + [''] # ''=^ all
+    mga_groups['links'] = list(n.links.apply(country_pair, axis=1).unique()) + [''] # ''=^ all
     mga_groups['transmission'] = list(np.unique(np.concatenate((mga_groups['lines'], mga_groups['links']))))
     if not snakemake.config['lines_and_links_separate']:
         mga_groups['lines'] = []
@@ -65,13 +67,13 @@ def get_mga_groups(n):
 def mga_list_from_class(component_type, component_names):
     return ['+'.join([component_type, c, sense]) for c in component_names for sense in ['min', 'max']]
 
-n = pypsa.Network(snakemake.input[0])
 
+n = pypsa.Network(snakemake.input[0])
 
 if snakemake.wildcards.category == "hypercube":
     mga_class = get_mga_components(n) 
 elif snakemake.wildcards.category == "groups":
-    mga_class = get_mga_groups(n) 
+    mga_class = get_mga_component_groups(n) 
 else:
     mga_class = {}
 
