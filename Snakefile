@@ -1,7 +1,3 @@
-# TODO: fix environment file
-import os
-os.system("pip install tsam")
-
 configfile: "config.yaml"
 
 wildcard_constraints:
@@ -36,6 +32,8 @@ rule solve_base:
         solver="logs/elec_s_{clusters}_l{ll}_t{snapshots}_{opts}_solver.log",
         python="logs/elec_s_{clusters}_l{ll}_t{snapshots}_{opts}_python.log",
         memory="logs/elec_s_{clusters}_l{ll}_t{snapshots}_{opts}_memory.log"
+    threads: 2
+    resources: mem=30000
     script: "scripts/solve_base.py"
 
 rule solve_all_bases:
@@ -60,6 +58,8 @@ rule generate_alternative:
         solver="logs/elec_s_{clusters}_l{ll}_t{snapshots}_{opts}_tol{epsilon}_cat-{category}_obj-{objective}_solver.log",
         python="logs/elec_s_{clusters}_l{ll}_t{snapshots}_{opts}_tol{epsilon}_cat-{category}_obj-{objective}_python.log",
         memory="logs/elec_s_{clusters}_l{ll}_t{snapshots}_{opts}_tol{epsilon}_cat-{category}_obj-{objective}_memory.log"
+    threads: 2
+    resources: mem=30000
     script: "scripts/generate_alternative.py"
 
 def input_generate_all_alternatives(w):
