@@ -5,10 +5,11 @@ import re
 import logging
 logger = logging.getLogger(__name__)
 
+import progressbar as pgb
 pgb.streams.wrap_stderr()
+
 logging.basicConfig(level='ERROR')
 
-import progressbar as pgb
 
 def infer_wildcards_from_fn(fn):
 
