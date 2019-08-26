@@ -207,13 +207,19 @@ if __name__ == "__main__":
         mga_opts = translate_mga_opts(n, snakemake.wildcards.objective.split('+'))
 
         n = prepare_network(n, solve_opts=snakemake.config['solving']['options'])
-        n = solve_network(n, 
-                config=snakemake.config['solving'],
-                solver_log=snakemake.log.solver,
-                opts=opts,
-                extra_functionality=modify_model,
-                extra_functionality_args=mga_opts,
-                skip_iterating=True)
+        
+        # catch and tag numerical issues
+        try:
+            n = solve_network(n, 
+                    config=snakemake.config['solving'],
+                    solver_log=snakemake.log.solver,
+                    opts=opts,
+                    extra_functionality=modify_model,
+                    extra_functionality_args=mga_opts,
+                    skip_iterating=True)
+            n.numerical_issue = 0
+        except:
+            n.numerical_issue = 1
 
         n.export_to_netcdf(snakemake.output[0])
 
