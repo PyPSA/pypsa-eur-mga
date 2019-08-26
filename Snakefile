@@ -102,5 +102,20 @@ rule generate_all_alternatives:
     input: input_generate_all_alternatives
 
 
-
 # EVALUATION
+
+rule extract_results:
+    input: input_generate_all_alternatives
+    output:
+        investments="results/summaries/investments.csv",
+        energy="results/summaries/energy.csv",
+        storage_capacity="results/summaries/storage_capacity.csv",
+        generation_capacity="results/summaries/generation_capacity.csv",
+        line_capacity="results/summaries/line_capacity.csv",
+        link_capacity="results/summaries/link_capacity.csv",
+        line_volume="results/summaries/line_volume.csv",
+        link_volume="results/summaries/link_volume.csv",
+        line_energy_balance="results/summaries/line_energy_balance.csv",
+        link_energy_balance="results/summaries/link_energy_balance.csv"
+    script: "scripts/extract_results.py"
+
