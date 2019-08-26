@@ -47,6 +47,7 @@ if __name__ == "__main__":
     with memory_logger(filename=getattr(snakemake.log, 'memory', None), interval=30.) as mem:
         n = pypsa.Network(snakemake.input[0])
         n.lines.s_max_pu = 0.7 # temporary assert
+        n.lines.s_nom_min = n.lines.s_nom
 
         n = prepare_network(n, solve_opts=snakemake.config['solving']['options'])
         n = solve_network(n, config=snakemake.config['solving'], solver_log=snakemake.log.solver, opts=opts, skip_iterating=True)
