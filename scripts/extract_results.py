@@ -151,6 +151,6 @@ if __name__ == "__main__":
     line_transmission_capacity.to_csv(snakemake.output.line_capacity)
     line_transmission_volume.to_csv(snakemake.output.line_volume)
     link_transmission_capacity.to_csv(snakemake.output.link_capacity)
-    link_transmission_volume.to_csv(snakemake.output.line_volume)
+    link_transmission_volume.to_csv(snakemake.output.link_volume)
     line_energy_balance.to_csv(snakemake.output.line_energy_balance)
     link_energy_balance.to_csv(snakemake.output.link_energy_balance)
