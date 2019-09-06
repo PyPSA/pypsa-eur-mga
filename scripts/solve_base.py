@@ -51,7 +51,7 @@ if __name__ == "__main__":
         n.lines.s_max_pu = 0.7 # temporary assert
         n.lines.s_nom_min = n.lines.s_nom
         n.links.p_nom_min = n.links.p_nom
-        n.lines.s_nom_max = n.lines.apply(lambda x: x.s_nom + max(x.s_nom, 2*x.s_nom/x.num_parallel), axis=1)
+        n.lines.s_nom_max = n.lines.apply(lambda x: x.s_nom + max(x.s_nom, 2*x.s_nom/max(x.num_parallel, 1)), axis=1)
         n.links.p_nom_max = 25000
 
         n = prepare_network(n, solve_opts=snakemake.config['solving']['options'])
