@@ -26,7 +26,7 @@ rule cluster_time:
 rule cluster_all_times:
     input:
         expand("networks/elec_s_{clusters}_l{ll}_t{snapshots}_{opts}.nc",
-                **config['scenario'])
+                **config['scenario-totals'])
 
 rule solve_base:
     input: "networks/elec_s_{clusters}_l{ll}_t{snapshots}_{opts}.nc"
@@ -43,7 +43,7 @@ rule solve_base:
 rule solve_all_bases:
     input:
         expand("results/networks/elec_s_{clusters}_l{ll}_t{snapshots}_{opts}.nc",
-                **config['scenario'])
+                **config['scenario-totals'])
 
 
 # MODELLING TO GENERATE ALTERNATIVES
@@ -67,35 +67,46 @@ rule generate_alternative:
     script: "scripts/generate_alternative.py"
 
 def input_generate_all_alternatives(w):
-    wildcards = {**config['scenario'], **config['alternative']}
+    wildcards_sets = [
+        {**config['scenario-totals'], **config['alternative-totals']}
+    ]
+    if config['include_groups']:
+        wildcards_sets.append(
+            {**config['scenario-groups'], **config['alternative-groups']}
+        )
+    if config['include_hypercube']:
+        wildcards_sets.append(
+            {**config['scenario-hypercube'], **config['alternative-hypercube']}
+        )
     input = []
-    for cluster in wildcards['clusters']:
-        for ll in wildcards['ll']:
-            for snapshots in wildcards['snapshots']:
-                for opts in wildcards['opts']:
-                    for epsilon in wildcards['epsilon']:
-                        for category in wildcards['category']:
-                            alternatives = checkpoints.generate_list_of_alternatives.get(
-                                clusters=cluster,
-                                ll=ll,
-                                snapshots=snapshots,
-                                opts=opts,
-                                category=category).output[0]
-                            obj_list = []
-                            with open(alternatives, "r") as f:  
-                                for line in f:
-                                    obj_list.append(line.strip())
-                            for obj in obj_list:              
-                                input.append(
-                                    "results/networks/elec_s_{clusters}_l{ll}_t{snapshots}_{opts}_tol{epsilon}_cat-{category}_obj-{objective}.nc".format(
-                                        clusters=cluster,
-                                        ll=ll,
-                                        snapshots=snapshots,
-                                        opts=opts,
-                                        epsilon=epsilon,
-                                        objective=obj,
-                                        category=category)
-                                )
+    for wildcards in wildcards_sets:
+        for cluster in wildcards['clusters']:
+            for ll in wildcards['ll']:
+                for snapshots in wildcards['snapshots']:
+                    for opts in wildcards['opts']:
+                        for epsilon in wildcards['epsilon']:
+                            for category in wildcards['category']:
+                                alternatives = checkpoints.generate_list_of_alternatives.get(
+                                    clusters=cluster,
+                                    ll=ll,
+                                    snapshots=snapshots,
+                                    opts=opts,
+                                    category=category).output[0]
+                                obj_list = []
+                                with open(alternatives, "r") as f:  
+                                    for line in f:
+                                        obj_list.append(line.strip())
+                                for obj in obj_list:              
+                                    input.append(
+                                        "results/networks/elec_s_{clusters}_l{ll}_t{snapshots}_{opts}_tol{epsilon}_cat-{category}_obj-{objective}.nc".format(
+                                            clusters=cluster,
+                                            ll=ll,
+                                            snapshots=snapshots,
+                                            opts=opts,
+                                            epsilon=epsilon,
+                                            objective=obj,
+                                            category=category)
+                                    )
     return input
 
 rule generate_all_alternatives:
@@ -118,4 +129,4 @@ rule extract_results:
         line_energy_balance="results/summaries/line_energy_balance.csv",
         link_energy_balance="results/summaries/link_energy_balance.csv"
     script: "scripts/extract_results.py"
-
+    

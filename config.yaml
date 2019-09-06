@@ -1,14 +1,24 @@
 logging_level: INFO
 
-scenario:
+scenario-totals:
   clusters: [100] # [100,200]
-  ll: ['vopt']
+  ll: ['copt']
   snapshots: [8760] # [8760]
-  opts: [Co2L0.05-3H, Co2L0.2-3H] # [3H, 2H, 1H]
+  opts: [Co2L0.0-3H, Co2L0.05-3H, Co2L0.2-3H] # [3H, 2H, 1H]
 
-alternative:  
-  epsilon: [0.01, 0.05, 0.1]
-  category: ['groups'] # ['hypercube', 'groups']
+alternative-totals:
+  epsilon: [0.005, 0.01, 0.03, 0.05, 0.1]
+  category: ['totals']
+
+scenario-groups:
+  clusters: [100] # [100,200]
+  ll: ['copt']
+  snapshots: [8760] # [8760]
+  opts: [Co2L0.05-3H] # [3H, 2H, 1H]
+
+alternative-groups:
+  epsilon: [0.05]
+  category: ['groups']
 
 solving:
   options:
@@ -28,3 +38,5 @@ solving:
     GURO_PAR_BARDENSETHRESH: 200
 
 lines_and_links_separate: false
+include_groups: false
+include_hypercube: false

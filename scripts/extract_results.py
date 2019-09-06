@@ -25,6 +25,9 @@ def infer_wildcards_from_fn(fn):
     d['tres'] = l[3].split('-')[1]
     d['type'],d['variable_name'],d['sense'] = l[6][4:-3].split('+')
 
+    if d['variable_name'] == '':
+        d['variable_name'] == 'all'
+
     return d
 
 

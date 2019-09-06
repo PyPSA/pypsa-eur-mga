@@ -12,17 +12,38 @@ def get_mga_components(n):
     }
     return extendable_components
 
-
-def get_mga_component_groups(n):
-
-    def append_supertype_carriers(carriers):
+def append_supertype_carriers(carriers):
         # wind to include onwind, offwind-ac, offwind-dc
         # offwind to include offwind-ac, offwind-dc
-        supertype_carriers = ["wind", "offwind"]
+        # cgt to include ccgt, ocgt
+        supertype_carriers = ["wind", "offwind", "cgt"]
         for sc in supertype_carriers:
             if any([sc in c for c in carriers]):
                 carriers.append(sc)
         return carriers
+
+def get_mga_components_totals(n):
+
+    mga_totals = {}
+
+    # storage_units and generators
+    for comp in ['generators', 'storage_units']:
+        carriers = list(getattr(n, comp).loc[getattr(n, comp).p_nom_extendable].carrier.unique())
+        carriers = append_supertype_carriers(carriers)
+        mga_totals[comp] = carriers
+
+    if len(n.storage_units) > 0:
+        mga_totals['storage_units'] = ['']
+
+    # lines and links
+    mga_totals['transmission'] = ['']
+    if snakemake.config['lines_and_links_separate']:
+        mga_totals['lines'] = ['']
+        mga_totals['links'] = ['']
+
+    return mga_totals
+
+def get_mga_component_groups(n):
     
     mga_groups = {}
     for comp in ['generators', 'storage_units']:
@@ -30,8 +51,7 @@ def get_mga_component_groups(n):
         carriers = list(getattr(n, comp).loc[getattr(n, comp).p_nom_extendable].carrier.unique())
         carriers = append_supertype_carriers(carriers)    
         
-        mga_list = carriers  # + countries
-        
+        mga_list = []
         for country in countries:
             country_carriers = list(getattr(n, comp).loc[
                 getattr(n, comp).p_nom_extendable &
@@ -40,6 +60,7 @@ def get_mga_component_groups(n):
             country_carriers = append_supertype_carriers(country_carriers)
             for carrier in country_carriers:
                 mga_list.append(' '.join([country, carrier]))
+
         mga_groups[comp] = mga_list
     
     def country_pair(l):
@@ -55,8 +76,8 @@ def get_mga_component_groups(n):
             return "{} {}".format(country_a, country_b)
     
 
-    mga_groups['lines'] = list(n.lines.apply(country_pair, axis=1).unique()) + [''] # ''=^ all
-    mga_groups['links'] = list(n.links.apply(country_pair, axis=1).unique()) + [''] # ''=^ all
+    mga_groups['lines'] = list(n.lines.apply(country_pair, axis=1).unique())
+    mga_groups['links'] = list(n.links.apply(country_pair, axis=1).unique())
     mga_groups['transmission'] = list(np.unique(np.concatenate((mga_groups['lines'], mga_groups['links']))))
     if not snakemake.config['lines_and_links_separate']:
         mga_groups['lines'] = []
@@ -74,6 +95,8 @@ if snakemake.wildcards.category == "hypercube":
     mga_class = get_mga_components(n) 
 elif snakemake.wildcards.category == "groups":
     mga_class = get_mga_component_groups(n) 
+elif snakemake.wildcards.category == "totals":
+    mga_class = get_mga_components_totals(n)
 else:
     mga_class = {}
 
