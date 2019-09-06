@@ -2,7 +2,7 @@ logging_level: INFO
 
 scenario:
   clusters: [100] # [100,200]
-  ll: ['copt']
+  ll: ['vopt']
   snapshots: [8760] # [8760]
   opts: [Co2L0.05-3H, Co2L0.2-3H] # [3H, 2H, 1H]
 
