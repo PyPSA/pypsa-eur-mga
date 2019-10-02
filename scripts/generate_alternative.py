@@ -31,7 +31,7 @@ def modify_model(n, var_type, var_name, obj_sense):
     def encode_objective_as_constraint(n):
         epsilon = float(snakemake.wildcards.epsilon)
 
-        # adding costs of pre-existing infrastructure for suitable base
+        # adding costs of pre-existing infrastructure for suitable base objective value
         constant =  (n.links.p_nom * n.links.capital_cost).sum() + \
             (n.generators.p_nom * n.generators.capital_cost).sum() + \
             (n.lines.s_nom * n.lines.capital_cost).sum() + \
@@ -65,29 +65,25 @@ def modify_model(n, var_type, var_name, obj_sense):
                 elif all(token in var_check for token in var_name.split(' ')):
                     variables.append(var)
 
+            # translate between pyomo model names and network data names
             m_to_n = {'link_p_nom': 'links',
                     'passive_branch_s_nom': 'lines'}
 
             if var_type in ['link_p_nom', 'passive_branch_s_nom']:
                 index = var[1] if var_type=='passive_branch_s_nom' else var
-                
                 part_expr = sum(getattr(n,m_to_n[var_type]).length[index]*getattr(n.model,var_type)[var] for var in variables)
             else:
                 part_expr = sum(getattr(n.model,var_type)[var] for var in variables)
 
             expr = expr + part_expr if expr is not None else part_expr
 
-        sense = obj_sense
-        n.model.objective = Objective(expr=expr, sense=sense)
+        n.model.objective = Objective(expr=expr, sense=obj_sense)
+
+        # print objective to console
         n.model.objective.pprint()
 
-
+    # warmstart
     def set_initial_values(n):
-        set_inital_primal_values(n)
-        set_inital_dual_values(n)
-
-    # TODO: set initial values to upper/lower capacity limits of variables for max/min
-    def set_inital_primal_values(n):
 
         for i in n.generators.loc[n.generators.p_nom_extendable].index:
             n.model.generator_p_nom[i].value = n.generators.loc[i].p_nom_opt
@@ -124,11 +120,6 @@ def modify_model(n, var_type, var_name, obj_sense):
             # for t in n.snapshots:
             #     n.model.passive_branch_p['Line',i,t].value = n.lines_t.p0.loc[t,i]
 
-    # TODO: implement
-    def set_inital_dual_values(n):
-        pass
-    
-    
     encode_objective_as_constraint(n)
     set_alternative_objective(n, var_type, var_name, obj_sense)
     set_initial_values(n)
@@ -157,25 +148,20 @@ if __name__ == "__main__":
             for o in snakemake.wildcards.opts.split('-')
             if not re.match(r'^\d+h$', o, re.IGNORECASE)]
 
-
     def translate_mga_opts(n, mga_opts):
-
         network_type_names = ['generators', 'storage_units', 'stores', 'lines', 'links', 'transmission']
         model_type_names = ['generator_p_nom', 'storage_p_nom', 'store_e_nom', 'passive_branch_s_nom', 'link_p_nom', ['passive_branch_s_nom', 'link_p_nom']]
         type_names_dict = dict(zip(network_type_names, model_type_names))
         sense_dict = {'max': -1, 'min': 1}
 
         def country_pair_component_names(n, country_ids, components):
-
             if type(components) == str:
                 components = [components]
                 
             index = []
             for component in components:
-            
                 comp_df = getattr(n, component)
                 cp = country_ids.split(' ')
-
                 if len(cp) == 1:
                     selector = [(cp[0] == b0[:2] and cp[0] == b1[:2])
                                 for b0, b1 in zip(comp_df.bus0, comp_df.bus1)]
@@ -183,17 +169,13 @@ if __name__ == "__main__":
                     selector = [(cp[0] == b0[:2] and cp[1] == b1[:2]) or 
                                 (cp[1] == b0[:2] and cp[0] == b1[:2])
                                 for b0, b1 in zip(comp_df.bus0, comp_df.bus1)]
-
                 index += list(comp_df.loc[selector].index)
 
             return " ".join(index)
 
         subtypes_lookup = {'lines': 'lines', 'links': 'links', 'transmission': ['links', 'lines']}
         if mga_opts[0] in subtypes_lookup.keys():
-            print(mga_opts[1])
             mga_opts[1] = country_pair_component_names(n, mga_opts[1], subtypes_lookup[mga_opts[0]])
-            print(mga_opts[1])
-
         mga_opts[0] = type_names_dict[mga_opts[0]]
         mga_opts[2] = sense_dict[mga_opts[2]]
 

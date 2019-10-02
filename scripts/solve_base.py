@@ -48,14 +48,19 @@ if __name__ == "__main__":
         n = pypsa.Network(snakemake.input[0])
 
         # network modifications
-        n.lines.s_max_pu = 0.7 # temporary assert
+        n.lines.s_max_pu = 0.7
         n.lines.s_nom_min = n.lines.s_nom
         n.links.p_nom_min = n.links.p_nom
-        n.lines.s_nom_max = n.lines.apply(lambda x: x.s_nom + max(x.s_nom, 2*x.s_nom/max(x.num_parallel, 1)), axis=1)
-        n.links.p_nom_max = 25000
+        n.lines.s_nom_max = n.lines.apply(lambda x: x.s_nom +\
+                                           max(x.s_nom, float(snakemake.config['line_additional_circuits'])*\
+                                               x.s_nom/max(x.num_parallel, 1)),
+                                          axis=1)
+        n.links.p_nom_max = float(snakemake.config['link_p_nom_max'])
 
         n = prepare_network(n, solve_opts=snakemake.config['solving']['options'])
-        n = solve_network(n, config=snakemake.config['solving'], solver_log=snakemake.log.solver, opts=opts, skip_iterating=True)
+        n = solve_network(n, config=snakemake.config['solving'],
+                             solver_log=snakemake.log.solver,
+                             opts=opts, skip_iterating=True)
 
         n.export_to_netcdf(snakemake.output[0])
 

@@ -13,5 +13,7 @@ gurobi.log
 /data
 
 *.ipynb
+*.pdf
+*.png
 *dconf
 dependency-graph.png

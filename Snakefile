@@ -17,6 +17,18 @@ subworkflow pypsaeur:
     configfile: "config_pypsaeur.yaml"
 
 
+def memory(w):
+    factor = 3.
+    for o in w.opts.split('-'):
+        m = re.match(r'^(\d+)h$', o, re.IGNORECASE)
+        if m is not None:
+            factor /= int(m.group(1))
+            break
+    if w.clusters.endswith('m'):
+        return int(factor * (18000 + 180 * int(w.clusters[:-1])))
+    else:
+        return int(factor * (10000 + 195 * int(w.clusters)))
+
 # OPTIMAL SOLUTION
 rule cluster_time:
     input: pypsaeur("networks/elec_s_{clusters}_l{ll}_{opts}.nc")
@@ -37,7 +49,7 @@ rule solve_base:
         python="logs/elec_s_{clusters}_l{ll}_t{snapshots}_{opts}_python.log",
         memory="logs/elec_s_{clusters}_l{ll}_t{snapshots}_{opts}_memory.log"
     threads: 2
-    resources: mem=30000
+    resources: mem=memory
     script: "scripts/solve_base.py"
 
 rule solve_all_bases:
@@ -48,7 +60,9 @@ rule solve_all_bases:
 
 # MODELLING TO GENERATE ALTERNATIVES
 
-
+# At this checkpoint (https://snakemake.readthedocs.io/en/stable/snakefiles/rules.html#data-dependent-conditional-execution) 
+# based on the variables of the original problem the search directions
+# of the MGA iterations are inferred.
 checkpoint generate_list_of_alternatives:
     input: "results/networks/elec_s_{clusters}_l{ll}_t{snapshots}_{opts}.nc"
     output: "results/alternatives/elec_s_{clusters}_l{ll}_t{snapshots}_{opts}_cat-{category}.txt"
@@ -63,9 +77,10 @@ rule generate_alternative:
         python="logs/elec_s_{clusters}_l{ll}_t{snapshots}_{opts}_tol{epsilon}_cat-{category}_obj-{objective}_python.log",
         memory="logs/elec_s_{clusters}_l{ll}_t{snapshots}_{opts}_tol{epsilon}_cat-{category}_obj-{objective}_memory.log"
     threads: 2
-    resources: mem=25000
+    resources: mem=memory
     script: "scripts/generate_alternative.py"
 
+# generates list of inputs from alternatives list
 def input_generate_all_alternatives(w):
     wildcards_sets = [
         {**config['scenario-totals'], **config['alternative-totals']}
@@ -129,4 +144,14 @@ rule extract_results:
         line_energy_balance="results/summaries/line_energy_balance.csv",
         link_energy_balance="results/summaries/link_energy_balance.csv"
     script: "scripts/extract_results.py"
+    
+rule extract_gini:
+    input: input_generate_all_alternatives
+    output: "results/summaries/gini.csv"
+    script: "scripts/extract_gini.py"
+    
+rule extract_curtailment:
+    input: input_generate_all_alternatives
+    output: "results/summaries/curtailment.csv"
+    script: "scripts/extract_curtailment.py"
     

@@ -13,14 +13,19 @@ def get_mga_components(n):
     return extendable_components
 
 def append_supertype_carriers(carriers):
-        # wind to include onwind, offwind-ac, offwind-dc
-        # offwind to include offwind-ac, offwind-dc
-        # cgt to include ccgt, ocgt
-        supertype_carriers = ["wind", "offwind", "cgt"]
-        for sc in supertype_carriers:
-            if any([sc in c for c in carriers]):
-                carriers.append(sc)
-        return carriers
+    # wind to include onwind, offwind-ac, offwind-dc
+    # offwind to include offwind-ac, offwind-dc
+    # cgt to include ccgt, ocgt
+    supertype_carriers = ["wind", "offwind", "CGT"]
+    for sc in supertype_carriers:
+        if any([sc in c for c in carriers]):
+            carriers.append(sc)
+    return carriers
+
+def remove_excluded_carriers(carriers):
+    excluded_carriers = snakemake.config['excluded_carriers']
+    carriers = [c for c in carriers if c not in excluded_carriers]
+    return carriers
 
 def get_mga_components_totals(n):
 
@@ -30,10 +35,11 @@ def get_mga_components_totals(n):
     for comp in ['generators', 'storage_units']:
         carriers = list(getattr(n, comp).loc[getattr(n, comp).p_nom_extendable].carrier.unique())
         carriers = append_supertype_carriers(carriers)
+        carriers = remove_excluded_carriers(carriers)
         mga_totals[comp] = carriers
 
     if len(n.storage_units) > 0:
-        mga_totals['storage_units'] = ['']
+        mga_totals['storage_units'] += ['']
 
     # lines and links
     mga_totals['transmission'] = ['']
@@ -88,22 +94,23 @@ def get_mga_component_groups(n):
 def mga_list_from_class(component_type, component_names):
     return ['+'.join([component_type, c, sense]) for c in component_names for sense in ['min', 'max']]
 
+if __name__ == "__main__":
 
-n = pypsa.Network(snakemake.input[0])
+    n = pypsa.Network(snakemake.input[0])
 
-if snakemake.wildcards.category == "hypercube":
-    mga_class = get_mga_components(n) 
-elif snakemake.wildcards.category == "groups":
-    mga_class = get_mga_component_groups(n) 
-elif snakemake.wildcards.category == "totals":
-    mga_class = get_mga_components_totals(n)
-else:
-    mga_class = {}
+    if snakemake.wildcards.category == "hypercube":
+        mga_class = get_mga_components(n) 
+    elif snakemake.wildcards.category == "groups":
+        mga_class = get_mga_component_groups(n) 
+    elif snakemake.wildcards.category == "totals":
+        mga_class = get_mga_components_totals(n)
+    else:
+        mga_class = {}
 
-mga_list = []
-for c_type, c_name in mga_class.items():
-    mga_list += mga_list_from_class(c_type, c_name)
+    mga_list = []
+    for c_type, c_name in mga_class.items():
+        mga_list += mga_list_from_class(c_type, c_name)
 
-with open(snakemake.output[0], "w") as f:
-    for entry in mga_list:
-        f.write(entry +"\n")
+    with open(snakemake.output[0], "w") as f:
+        for entry in mga_list:
+            f.write(entry +"\n")
