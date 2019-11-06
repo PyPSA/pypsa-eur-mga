@@ -25,7 +25,7 @@ sys.path.insert(0, base_path+"/pypsa-eur/scripts")
 from solve_network import solve_network, prepare_network, patch_pyomo_tmpdir
 
 
-def modify_model(n, var_type, var_name, obj_sense):
+def modify_model(n, snapshots, var_type, var_name, obj_sense):
 
 
     def encode_objective_as_constraint(n):
