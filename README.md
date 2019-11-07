@@ -24,16 +24,28 @@ within 10% of the optimum.
 
 - F. Neumann, T. Brown, [The Near-Optimal of a Renewable Power System Model](https://arxiv.org/abs/1910.01891), 2019, Preprint submitted to PSCC2020, [arXiv:1910.01891](https://arxiv.org/abs/1910.01891)
 
-## Installation
+## Installation and Usage
 
-Requires a `PyPSA-Eur` installation in a parallel folder.
+Clone the repository
 
 ```bash
-../geometric-analysis % git clone https://github.com/pypsa/pypsa-eur.git
-../geometric-analysis % git clone https://git.scc.kit.edu/FN/pypsa-eur-mga.git
+../ % git clone https://git.scc.kit.edu/FN/pypsa-eur-mga.git
 ```
 
-Requires tsam in addition to PyPSA-Eur environment.yaml.
+and run
+
+```bash
+../pypsa-eur-mga % git submodule update --init
+```
+
+to retrieve the PyPSA-Eur submodule.
+
+Install and activate the `conda` environment with
+
+```bash
+conda env create -f environment.yaml
+conda activate pypsa-eur-mga
+```
 
 ## Workflow
 
