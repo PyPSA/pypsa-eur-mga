@@ -1,4 +1,5 @@
 version: 0.1
+tutorial: false
 logging_level: INFO
 
 summary_dir: results
@@ -11,22 +12,25 @@ snapshots:
   closed: 'left'
 
 enable:
-  powerplantmatching: false
   prepare_links_p_nom: true
+  build_cutout: false
+  build_natura_raster: false
 
 electricity:
   voltages: [220., 300., 380.]
   co2limit: 7.75e+7 # 0.05 * 3.1e9*0.5
-  co2base: 1.676e+9 # DE: 0.366e+9 EU: 1.65e+9
+  co2base: 1.676e+9
 
   extendable_carriers:
     Generator: [OCGT, CCGT]
-    StorageUnit: [battery, H2] # [CAES]
+    StorageUnit: [battery, H2]
 
   max_hours:
     battery: 6
     H2: 168
 
+  powerplants_filter: false # use pandas query strings here, e.g. Country not in ['Germany']
+  custom_powerplants: false # use pandas query strings here, e.g. Country in ['Germany']
   conventional_carriers: [] # nuclear, oil, OCGT, CCGT, coal, lignite, geothermal, biomass]
 
 atlite:

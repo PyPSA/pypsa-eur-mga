@@ -87,38 +87,18 @@ def modify_model(n, snapshots, var_type, var_name, obj_sense):
 
         for i in n.generators.loc[n.generators.p_nom_extendable].index:
             n.model.generator_p_nom[i].value = n.generators.loc[i].p_nom_opt
-            # for t in n.snapshots:
-            #    n.model.generator_p[i, t].value = n.generators_t.p.loc[t, i]
 
         for i in n.storage_units.loc[n.storage_units.p_nom_extendable].index:
             n.model.storage_p_nom[i].value = n.storage_units.loc[i].p_nom_opt
-            # for t in n.snapshots:
-            #     p = n.storage_units_t.p.loc[t,i]
-            #     if p<0:
-            #         n.model.storage_p_dispatch[i,t].value = p
-            #         n.model.storage_p_store[i,t].value = 0
-            #     else:
-            #         n.model.storage_p_dispatch[i,t].value = 0
-            #         n.model.storage_p_store[i,t].value = p
-            #     n.model.state_of_charge[i,t].value = n.storage_units_t.state_of_charge.loc[t,i]
-            #     if "hydro" in i:
-            #         n.model.storage_p_spill[i,t].value = n.storage_units_t.spill.loc[t,i]
 
         for i in n.stores.loc[n.stores.e_nom_extendable].index:
             n.model.store_e_nom[i].value = n.stores.loc[i].e_nom_opt
-            # for t in n.snapshots:
-            #     n.model.store_p[i,t].value = n.stores_t.p.loc[t,i]
-            #     n.model.store_e[i,t].value = n.stores_t.e.loc[t,i]
 
         for i in n.links.loc[n.links.p_nom_extendable].index:
             n.model.link_p_nom[i].value = n.links.loc[i].p_nom_opt
-            # for t in n.snapshots:
-            #     n.model.link_p[i,t].value = n.links_t.p0.loc[t,i]
 
         for i in n.lines.loc[n.lines.s_nom_extendable].index:
             n.model.passive_branch_s_nom['Line',i].value = n.lines.loc[i].s_nom_opt
-            # for t in n.snapshots:
-            #     n.model.passive_branch_p['Line',i,t].value = n.lines_t.p0.loc[t,i]
 
     encode_objective_as_constraint(n)
     set_alternative_objective(n, var_type, var_name, obj_sense)

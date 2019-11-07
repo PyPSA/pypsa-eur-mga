@@ -1,7 +1,3 @@
-# TODO: fix environment file
-import os
-os.system("pip install tsam")
-
 configfile: "config.yaml"
 
 wildcard_constraints:
@@ -12,9 +8,9 @@ wildcard_constraints:
     snapshots="[0-9]*"
 
 subworkflow pypsaeur:
-    workdir: "../pypsa-eur"
-    snakefile: "../pypsa-eur/Snakefile"
-    configfile: "config_pypsaeur.yaml"
+    workdir: "pypsa-eur"
+    snakefile: "pypsa-eur/Snakefile"
+    configfile: "config.pypsaeur.yaml"
 
 
 def memory(w):
@@ -29,7 +25,8 @@ def memory(w):
     else:
         return int(factor * (10000 + 195 * int(w.clusters)))
 
-# OPTIMAL SOLUTION
+# PREPARATION
+
 rule cluster_time:
     input: pypsaeur("networks/elec_s_{clusters}_l{ll}_{opts}.nc")
     output: "networks/elec_s_{clusters}_l{ll}_t{snapshots}_{opts}.nc"
@@ -39,6 +36,8 @@ rule cluster_all_times:
     input:
         expand("networks/elec_s_{clusters}_l{ll}_t{snapshots}_{opts}.nc",
                 **config['scenario-totals'])
+
+# OPTIMAL SOLUTION
 
 rule solve_base:
     input: "networks/elec_s_{clusters}_l{ll}_t{snapshots}_{opts}.nc"
@@ -63,6 +62,7 @@ rule solve_all_bases:
 # At this checkpoint (https://snakemake.readthedocs.io/en/stable/snakefiles/rules.html#data-dependent-conditional-execution) 
 # based on the variables of the original problem the search directions
 # of the MGA iterations are inferred.
+
 checkpoint generate_list_of_alternatives:
     input: "results/networks/elec_s_{clusters}_l{ll}_t{snapshots}_{opts}.nc"
     output: "results/alternatives/elec_s_{clusters}_l{ll}_t{snapshots}_{opts}_cat-{category}.txt"
