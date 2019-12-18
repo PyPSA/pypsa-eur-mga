@@ -19,8 +19,7 @@ from pyomo.environ import Constraint, Objective
 from pyomo.core.expr.current import clone_expression
 
 # Add pypsa-eur scripts to path for import
-base_path = "/".join(os.getcwd().split("/")[:-1])
-sys.path.insert(0, base_path+"/pypsa-eur/scripts")
+sys.path.insert(0, os.getcwd()+"/pypsa-eur/scripts")
 
 from solve_network import solve_network, prepare_network, patch_pyomo_tmpdir
 
