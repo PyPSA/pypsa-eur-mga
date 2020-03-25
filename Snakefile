@@ -26,7 +26,7 @@ def memory(w):
 # OPTIMAL SOLUTION
 
 rule solve_base:
-    input: "networks/elec_s_{clusters}_ec_lcopt_{opts}.nc"
+    input: pypsaeur("networks/elec_s_{clusters}_ec_lcopt_{opts}.nc")
     output: "results/networks/elec_s_{clusters}_ec_lcopt_{opts}.nc",
     benchmark: "logs/elec_s_{clusters}_ec_lcopt_{opts}_time.log"
     log:
@@ -82,32 +82,26 @@ def input_generate_all_alternatives(w):
     input = []
     for wildcards in wildcards_sets:
         for cluster in wildcards['clusters']:
-            for ll in wildcards['ll']:
-                for snapshots in wildcards['snapshots']:
-                    for opts in wildcards['opts']:
-                        for epsilon in wildcards['epsilon']:
-                            for category in wildcards['category']:
-                                alternatives = checkpoints.generate_list_of_alternatives.get(
+            for opts in wildcards['opts']:
+                for epsilon in wildcards['epsilon']:
+                    for category in wildcards['category']:
+                        alternatives = checkpoints.generate_list_of_alternatives.get(
+                            clusters=cluster,
+                            opts=opts,
+                            category=category).output[0]
+                        obj_list = []
+                        with open(alternatives, "r") as f:  
+                            for line in f:
+                                obj_list.append(line.strip())
+                        for obj in obj_list:              
+                            input.append(
+                                "results/networks/elec_s_{clusters}_ec_lcopt_{opts}_tol{epsilon}_cat-{category}_obj-{objective}.nc".format(
                                     clusters=cluster,
-                                    ll=ll,
-                                    snapshots=snapshots,
                                     opts=opts,
-                                    category=category).output[0]
-                                obj_list = []
-                                with open(alternatives, "r") as f:  
-                                    for line in f:
-                                        obj_list.append(line.strip())
-                                for obj in obj_list:              
-                                    input.append(
-                                        "results/networks/elec_s_{clusters}_ec_lcopt_{opts}_tol{epsilon}_cat-{category}_obj-{objective}.nc".format(
-                                            clusters=cluster,
-                                            ll=ll,
-                                            snapshots=snapshots,
-                                            opts=opts,
-                                            epsilon=epsilon,
-                                            objective=obj,
-                                            category=category)
-                                    )
+                                    epsilon=epsilon,
+                                    objective=obj,
+                                    category=category)
+                            )
     return input
 
 rule generate_all_alternatives:
