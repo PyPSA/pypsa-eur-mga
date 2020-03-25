@@ -1,15 +1,11 @@
 import pypsa
 import pandas as pd
-import re
-
-import logging
-
-logger = logging.getLogger(__name__)
 
 import progressbar as pgb
-
 pgb.streams.wrap_stderr()
 
+import logging
+logger = logging.getLogger(__name__)
 logging.basicConfig(level="ERROR")
 
 from extract_results import infer_wildcards_from_fn

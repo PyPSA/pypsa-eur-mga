@@ -2,18 +2,17 @@ import pypsa
 import pandas as pd
 import re
 
-import logging
-
-logger = logging.getLogger(__name__)
-
 import progressbar as pgb
-
 pgb.streams.wrap_stderr()
 
+import logging
+logger = logging.getLogger(__name__)
 logging.basicConfig(level="ERROR")
 
 
 def infer_wildcards_from_fn(fn):
+
+    # TODO adjust to new filenames!
 
     d = {}
     l = fn.split("/")[-1].replace("storage_units", "storageunits").split("_")[2:]
@@ -36,17 +35,17 @@ def infer_wildcards_from_fn(fn):
 def get_investments(n, only_extendable=True):
 
     if only_extendable:
-        generators_b = n.generators.p_nom_extendable == True
-        lines_b = n.lines.s_nom_extendable == True
-        stores_b = n.stores.e_nom_extendable == True
-        storage_units_b = n.storage_units.p_nom_extendable == True
-        links_b = n.links.p_nom_extendable == True
+        generators_b = n.generators.p_nom_extendable
+        lines_b = n.lines.s_nom_extendable
+        stores_b = n.stores.e_nom_extendable
+        storage_units_b = n.storage_units.p_nom_extendable
+        links_b = n.links.p_nom_extendable
     else:
-        generators_b = [True for _ in n.generators.index]
-        lines_b = [True for _ in n.lines.index]
-        stores_b = [True for _ in n.stores.index]
-        storage_units_b = [True for _ in n.storage_units.index]
-        links_b = [True for _ in n.links.index]
+        generators_b = pd.Series(True, index=n.generators.index)
+        lines_b = pd.Series(True, index=n.lines.index)
+        stores_b = pd.Series(True, index=n.stores.index)
+        storage_units_b = pd.Series(True, index=n.storage_units.index)
+        links_b = pd.Series(True, index=n.links.index)
 
     return pd.concat(
         [

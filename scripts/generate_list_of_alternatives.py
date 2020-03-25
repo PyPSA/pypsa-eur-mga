@@ -1,23 +1,21 @@
 import pypsa
-import pandas as pd
 import numpy as np
 
 
 def get_mga_components(n):
-    extendable_components = {
+    return {
         "generators": n.generators.loc[n.generators.p_nom_extendable].index,
         "storage_units": n.storage_units.loc[n.storage_units.p_nom_extendable].index,
         "stores": n.stores.loc[n.stores.e_nom_extendable].index,
         "links": n.links.loc[n.links.p_nom_extendable].index,
         "lines": n.lines.loc[n.lines.s_nom_extendable].index,
     }
-    return extendable_components
 
 
 def append_supertype_carriers(carriers):
-    # wind to include onwind, offwind-ac, offwind-dc
-    # offwind to include offwind-ac, offwind-dc
-    # cgt to include ccgt, ocgt
+    # wind to include {onwind, offwind-ac, offwind-dc}
+    # offwind to include {offwind-ac, offwind-dc}
+    # cgt to include {ccgt, ocgt}
     supertype_carriers = ["wind", "offwind", "CGT"]
     for sc in supertype_carriers:
         if any([sc in c for c in carriers]):
@@ -27,8 +25,7 @@ def append_supertype_carriers(carriers):
 
 def remove_excluded_carriers(carriers):
     excluded_carriers = snakemake.config["excluded_carriers"]
-    carriers = [c for c in carriers if c not in excluded_carriers]
-    return carriers
+    return [c for c in carriers if c not in excluded_carriers]
 
 
 def get_mga_components_totals(n):
@@ -128,8 +125,8 @@ if __name__ == "__main__":
         mga_class = {}
 
     mga_list = []
-    for c_type, c_name in mga_class.items():
-        mga_list += mga_list_from_class(c_type, c_name)
+    for c_type, c_names in mga_class.items():
+        mga_list += mga_list_from_class(c_type, c_names)
 
     with open(snakemake.output[0], "w") as f:
         for entry in mga_list:
