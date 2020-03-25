@@ -64,6 +64,7 @@ def translate_mga_opts(n, mga_opts):
             ["passive_branch_s_nom", "link_p_nom"],
         ]
         type_names_dict = dict(zip(network_type_names, model_type_names))
+        
         sense_dict = {"max": -1, "min": 1}
 
         subtypes_lookup = {
