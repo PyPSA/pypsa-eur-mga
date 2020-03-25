@@ -2,19 +2,15 @@ logging_level: INFO
 
 scenario-totals:
   clusters: [100]
-  ll: ['copt']
-  snapshots: [8760]
-  opts: [Co2L0.0-2H, Co2L0.05-2H, Co2L0.2-2H]
+  opts: [2H]
 
 alternative-totals:
-  epsilon: [0.005, 0.01, 0.02, 0.03, 0.04, 0.05, 0.075, 0.1]
+  epsilon: [0.005, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1]
   category: ['totals']
 
 scenario-groups:
   clusters: [100]
-  ll: ['copt']
-  snapshots: [8760]
-  opts: [Co2L0.0-2H]
+  opts: [2H]
 
 alternative-groups:
   epsilon: [0.05]
@@ -23,16 +19,14 @@ alternative-groups:
 solving:
   options:
     formulation: kirchhoff
-    min_iterations: 0
-    max_iterations: 1
     clip_p_max_pu: 0.01
   solver:
     name: gurobi
     threads: 4
     method: 2 # barrier
     crossover: 0
-    BarConvTol: 1.e-5
-    FeasibilityTol: 1.e-6
+    BarConvTol: 1.e-4
+    FeasibilityTol: 1.e-5
     AggFill: 0
     PreDual: 0
     GURO_PAR_BARDENSETHRESH: 200
