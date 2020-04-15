@@ -34,6 +34,12 @@ solving:
 lines_and_links_separate: false
 include_groups: false
 include_hypercube: false
-line_additional_circuits: 4
-link_p_nom_max: 30000
 excluded_carriers: [OCGT, CCGT, offwind-ac, offwind-dc]
+
+lines:
+  s_max_pu: 0.7
+  s_nom_add: 8000
+  s_nom_factor: 2
+
+links:
+  p_nom_max: 20000

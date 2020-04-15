@@ -19,27 +19,26 @@ from solve_network import solve_network, prepare_network
 
 def adjust_network(n):
 
-    n.lines.s_max_pu = 0.7
-
     # need unique naming between links and lines
     # when objective includes lines and links
     n.lines.index = ["LN{}".format(i) for i in n.lines.index]
     n.links.index = ["LK{}".format(i) for i in n.links.index]
 
+    ln_config = snakemake.config["lines"]
+    n.lines = n.lines.loc[n.lines.s_nom != 0]
+    n.lines.s_max_pu = ln_config["s_max_pu"]
     n.lines.s_nom_min = n.lines.s_nom
-    n.links.p_nom_min = n.links.p_nom
-
     n.lines.s_nom_max = n.lines.apply(
-        lambda x: x.s_nom
-        + max(
-            x.s_nom,
-            float(snakemake.config["line_additional_circuits"])
-            * x.s_nom
-            / max(x.num_parallel, 1),
+        lambda line: max(
+            line.s_nom + ln_config["s_nom_add"],
+            line.s_nom * ln_config["s_nom_factor"],
         ),
         axis=1,
     )
-    n.links.p_nom_max = float(snakemake.config["link_p_nom_max"])
+
+    lk_config = snakemake.config["links"]
+    n.links.p_nom_min = n.links.p_nom
+    n.links.p_nom_max = float(lk_config["p_nom_max"])
 
 
 if __name__ == "__main__":

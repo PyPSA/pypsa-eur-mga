@@ -3,7 +3,16 @@ import sys
 import os
 import re
 
+from pypsa.descriptors import nominal_attrs
+from pypsa.linopt import get_var, linexpr, write_objective, define_constraints
+from pypsa.linopf import lookup
+from pypsa.pf import get_switchable_as_dense as get_as_dense
+from pypsa.descriptors import get_extendable_i
+
+import pandas as pd
+
 import logging
+
 logger = logging.getLogger(__name__)
 
 # Suppress logging of the slack bus choices
@@ -11,141 +20,141 @@ pypsa.pf.logger.setLevel(logging.WARNING)
 
 from vresutils.benchmark import memory_logger
 
-from pyomo.environ import Constraint, Objective
-from pyomo.core.expr.current import clone_expression
-
 # Add pypsa-eur scripts to path for import
 sys.path.insert(0, os.getcwd() + "/pypsa-eur/scripts")
 
-from solve_network import solve_network, prepare_network, patch_pyomo_tmpdir
+from solve_network import solve_network, prepare_network
 
 
-def country_pair_component_names(n, country_ids, components):
+def to_regex(pattern):
+    """[summary]
+    """
+    return "(" + ").*(".join(pattern.split(" ")) + ")"
+
+
+def transmission_countries_to_index(n, countries, components):
+    """[summary]
+    """
+
+    index = []
+    for c in components:
+        cntrs = countries.split(" ")
+        bus_pairs = zip(n.df(c).bus0, n.df(c).bus1)
+
+        if len(cntrs) == 1:  # within a country
+            selection = [
+                (cntrs[0] == b0[:2] and cntrs[0] == b1[:2]) for b0, b1 in bus_pairs
+            ]
+        else:  # across countries
+            selection = [
+                (cntrs[0] == b0[:2] and cntrs[1] == b1[:2])
+                or (cntrs[1] == b0[:2] and cntrs[0] == b1[:2])
+                for b0, b1 in bus_pairs
+            ]
+        index += list(n.df(c).loc[selection].index)
+
+    if len(index) == 0:
+        return ""
+    else:
+        return "^" + "$|^".join(index) + "$"  # regex for exact match
+
+
+def process_objective_wildcard(n, mga_obj):
+    """[summary]
+
+    Parameters
+    ----------
+    n : pypsa.Network
+    mga_obj : list-like
+        [var_type, pattern, sense]
+    """
+
+    lookup = {
+        "Link": ["Link"],
+        "Line": ["Line"],
+        "Transmission": ["Link", "Line"],
+    }
+    if mga_obj[0] in lookup.keys():
+        mga_obj[0] = lookup[mga_obj[0]]
+        mga_obj[1] = transmission_countries_to_index(n, mga_obj[1], mga_obj[0])
+
+    lookup = {"max": -1, "min": 1}
+    mga_obj[2] = lookup[mga_obj[2]]
+
+    # attach to network
+    n.mga_obj = mga_obj
+
+    # print mga_obj to console
+    print(mga_obj)
+
+
+def define_mga_constraint(n, sns):
+
+    epsilon = float(snakemake.wildcards.epsilon)
+
+    expr = []
+
+    # operation
+    for c, attr in lookup.query("marginal_cost").index:
+        cost = (
+            get_as_dense(n, c, "marginal_cost", sns)
+            .loc[:, lambda ds: (ds != 0).all()]
+            .mul(n.snapshot_weightings[sns], axis=0)
+        )
+        if cost.empty:
+            continue
+        expr.append(linexpr((cost, get_var(n, c, attr).loc[sns, cost.columns])).stack())
+
+    # investment
+    for c, attr in nominal_attrs.items():
+        cost = n.df(c)["capital_cost"][get_extendable_i(n, c)]
+        if cost.empty:
+            continue
+        expr.append(linexpr((cost, get_var(n, c, attr)[cost.index])))
+
+    lhs = pd.concat(expr).sum()
+    rhs = (1 + epsilon) * n.objective + epsilon * n.objective_constant
+
+    define_constraints(n, lhs, "<=", rhs, "GlobalConstraint", "mu_epsilon")
+
+    # maximum objective value (relative)
+    print(rhs / (n.objective + n.objective_constant))
+
+
+def define_mga_objective(n):
+
+    components, pattern, sense = n.mga_obj
 
     if isinstance(components, str):
         components = [components]
 
-    index = []
-    for component in components:
-        comp_df = getattr(n, component)
-        cp = country_ids.split(" ")
-        if len(cp) == 1:
-            selector = [
-                (cp[0] == b0[:2] and cp[0] == b1[:2])
-                for b0, b1 in zip(comp_df.bus0, comp_df.bus1)
-            ]
+    terms = []
+    for c in components:
+
+        variables = get_var(n, c, nominal_attrs[c]).filter(regex=to_regex(pattern))
+
+        if c in ["Link", "Line"]:
+            coeffs = sense * n.df(c).loc[variables.index, "length"]
         else:
-            selector = [
-                (cp[0] == b0[:2] and cp[1] == b1[:2])
-                or (cp[1] == b0[:2] and cp[0] == b1[:2])
-                for b0, b1 in zip(comp_df.bus0, comp_df.bus1)
-            ]
-        index += list(comp_df.loc[selector].index)
+            coeffs = sense
 
-    return " ".join(index)
+        terms.append(linexpr((coeffs, variables)))
 
+    joint_terms = pd.concat(terms)
 
-def translate_mga_opts(n, mga_opts):
-
-        network_type_names = [
-            "generators",
-            "storage_units",
-            "stores",
-            "lines",
-            "links",
-            "transmission",
-        ]
-        model_type_names = [
-            "generator_p_nom",
-            "storage_p_nom",
-            "store_e_nom",
-            "passive_branch_s_nom",
-            "link_p_nom",
-            ["passive_branch_s_nom", "link_p_nom"],
-        ]
-        type_names_dict = dict(zip(network_type_names, model_type_names))
-        
-        sense_dict = {"max": -1, "min": 1}
-
-        subtypes_lookup = {
-            "lines": "lines",
-            "links": "links",
-            "transmission": ["links", "lines"],
-        }
-
-        if mga_opts[0] in subtypes_lookup.keys():
-            mga_opts[1] = country_pair_component_names(
-                n, mga_opts[1], subtypes_lookup[mga_opts[0]]
-            )
-        mga_opts[0] = type_names_dict[mga_opts[0]]
-        mga_opts[2] = sense_dict[mga_opts[2]]
-
-        # attach to network
-        n.mga_opts = mga_opts
-
-
-def encode_objective_as_constraint(n):
-
-    epsilon = float(snakemake.wildcards.epsilon)
-
-    expr = n.model.objective.expr + n.objective_constant <= (1 + epsilon) * (
-        n.objective + n.objective_constant
-    )
-
-    n.model.objective_value_slack = Constraint(expr=expr)
-
-
-def set_alternative_objective(n):
-
-    var_type, var_name, obj_sense = n.mga_opts
-
-    if isinstance(var_types, str):
-        var_types = [var_types]
-
-    n.model.del_component("objective")
-
-    expr = None
-    for var_type in var_types:
-        variables = []
-        for var in getattr(n.model, var_type):
-
-            # line variables are saved with tuple index ('Line', 'var')
-            if isinstance(var, tuple):
-                var_check = var[1]
-            else:
-                var_check = var
-
-            if any(token == var_check for token in var_name.split(" ")):
-                variables.append(var)
-            elif all(token in var_check for token in var_name.split(" ")):
-                variables.append(var)
-
-        # translate between pyomo model names and network data names
-        m_to_n = {"link_p_nom": "links", "passive_branch_s_nom": "lines"}
-
-        if var_type in ["link_p_nom", "passive_branch_s_nom"]:
-            index = var[1] if var_type == "passive_branch_s_nom" else var
-            part_expr = sum(
-                getattr(n, m_to_n[var_type]).length[index]
-                * getattr(n.model, var_type)[var]
-                for var in variables
-            )
-        else:
-            part_expr = sum(getattr(n.model, var_type)[var] for var in variables)
-
-        expr = expr + part_expr if expr is not None else part_expr
-
-    n.model.objective = Objective(expr=expr, sense=obj_sense)
+    write_objective(n, joint_terms)
 
     # print objective to console
-    n.model.objective.pprint()
+    print(joint_terms)
 
 
-def modify_model(network, snapshots):
-    wcs = snakemake.wildcards.objective.split("+")
-    translate_mga_opts(network, wcs)
-    encode_objective_as_constraint(network)
-    set_alternative_objective(network)
+def extra_functionality(n, sns):
+    """Calls extra functionality modules.
+    """
+    wc = snakemake.wildcards.objective.split("+")
+    process_objective_wildcard(n, wc)
+    define_mga_objective(n)
+    define_mga_constraint(n, sns)
 
 
 if __name__ == "__main__":
@@ -177,8 +186,9 @@ if __name__ == "__main__":
                 config=solve_opts,
                 solver_log=snakemake.log.solver,
                 opts=opts,
-                extra_functionality=modify_model,
-                skip_iterating=True,
+                extra_functionality=extra_functionality,
+                skip_iterations=True,
+                skip_objective=True,
             )
             n.numerical_issue = 0
         except:
