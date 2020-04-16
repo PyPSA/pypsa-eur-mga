@@ -187,7 +187,6 @@ if __name__ == "__main__":
                 solver_log=snakemake.log.solver,
                 opts=opts,
                 extra_functionality=extra_functionality,
-                skip_iterations=True,
                 skip_objective=True,
             )
             n.numerical_issue = 0

@@ -66,7 +66,6 @@ if __name__ == "__main__":
             config=snakemake.config,
             solver_log=snakemake.log.solver,
             opts=opts,
-            skip_iterations=True,
         )
 
         n.export_to_netcdf(snakemake.output[0])
