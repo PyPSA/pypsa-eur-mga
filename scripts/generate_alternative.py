@@ -23,7 +23,7 @@ from vresutils.benchmark import memory_logger
 # Add pypsa-eur scripts to path for import
 sys.path.insert(0, os.getcwd() + "/pypsa-eur/scripts")
 
-from solve_network import solve_network, prepare_network
+from solve_network import prepare_network, add_battery_constraints
 
 
 def to_regex(pattern):
@@ -148,13 +148,38 @@ def define_mga_objective(n):
     print(joint_terms)
 
 
-def extra_functionality(n, sns):
+def to_mga_model(n, sns):
     """Calls extra functionality modules.
     """
     wc = snakemake.wildcards.objective.split("+")
     process_objective_wildcard(n, wc)
     define_mga_objective(n)
     define_mga_constraint(n, sns)
+    add_battery_constraints(n)
+
+
+# adapted from pypsa-eur/scripts/solve_network.py
+def solve_network(n, config, solver_log=None, opts='', extra_functionality=None, **kwargs):
+    solver_options = config['solving']['solver'].copy()
+    solver_name = solver_options.pop('name')
+    track_iterations = config['solving']['options'].get('track_iterations', False)
+    min_iterations = config['solving']['options'].get('min_iterations', 4)
+    max_iterations = config['solving']['options'].get('max_iterations', 6)
+
+    # add to network for extra_functionality
+    n.config = config
+    n.opts = opts
+
+    if config['solving']['options'].get('skip_iterations', False):
+        network_lopf(n, solver_name=solver_name, solver_options=solver_options,
+                     extra_functionality=extra_functionality, **kwargs)
+    else:
+        ilopf(n, solver_name=solver_name, solver_options=solver_options,
+              track_iterations=track_iterations,
+              min_iterations=min_iterations,
+              max_iterations=max_iterations,
+              extra_functionality=extra_functionality, **kwargs)
+    return n
 
 
 if __name__ == "__main__":
@@ -169,24 +194,22 @@ if __name__ == "__main__":
         if not re.match(r"^\d+h$", o, re.IGNORECASE)
     ]
 
-    solve_opts = snakemake.config["solving"]
-
     with memory_logger(
         filename=getattr(snakemake.log, "memory", None), interval=30.0
     ) as mem:
 
         n = pypsa.Network(snakemake.input[0])
 
-        n = prepare_network(n, solve_opts=solve_opts["options"])
+        n = prepare_network(n, solve_opts=snakemake.config["solving"]["options"])
 
         # catch and tag numerical issues
         try:
             n = solve_network(
                 n,
-                config=solve_opts,
+                config=snakemake.config,
                 solver_log=snakemake.log.solver,
                 opts=opts,
-                extra_functionality=extra_functionality,
+                extra_functionality=to_mga_model,
                 skip_objective=True,
             )
             n.numerical_issue = 0
