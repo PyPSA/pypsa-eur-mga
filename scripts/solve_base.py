@@ -63,7 +63,7 @@ if __name__ == "__main__":
         n = prepare_network(n, solve_opts=snakemake.config["solving"]["options"])
         n = solve_network(
             n,
-            config=snakemake.config["solving"],
+            config=snakemake.config,
             solver_log=snakemake.log.solver,
             opts=opts,
             skip_iterations=True,
