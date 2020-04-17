@@ -59,6 +59,18 @@ def transmission_countries_to_index(n, countries, components):
         return "^" + "$|^".join(index) + "$"  # regex for exact match
 
 
+def calculate_objective_constant(n):
+    """[summary]
+    """
+
+    constant = 0
+    for c, attr in nominal_attrs.items():
+        ext_i = get_extendable_i(n, c)
+        constant += n.df(c)[attr][ext_i] @ n.df(c).capital_cost[ext_i]
+
+    n.objective_constant = constant
+
+
 def process_objective_wildcard(n, mga_obj):
     """[summary]
 
@@ -111,6 +123,8 @@ def define_mga_constraint(n, sns):
         if cost.empty:
             continue
         expr.append(linexpr((cost, get_var(n, c, attr)[cost.index])))
+
+    calculate_objective_constant(n)
 
     lhs = pd.concat(expr).sum()
     rhs = (1 + epsilon) * n.objective + epsilon * n.objective_constant
