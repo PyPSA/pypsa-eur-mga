@@ -202,19 +202,19 @@ if __name__ == "__main__":
 
         n = prepare_network(n, solve_opts=snakemake.config["solving"]["options"])
 
-        # catch and tag numerical issues
-        try:
-            n = solve_network(
-                n,
-                config=snakemake.config,
-                solver_log=snakemake.log.solver,
-                opts=opts,
-                extra_functionality=to_mga_model,
-                skip_objective=True,
-            )
-            n.numerical_issue = 0
-        except:
-            n.numerical_issue = 1
+        # # catch and tag numerical issues
+        # try:
+        #     n.numerical_issue = 0
+        # except:
+        #     n.numerical_issue = 1
+        n = solve_network(
+            n,
+            config=snakemake.config,
+            solver_log=snakemake.log.solver,
+            opts=opts,
+            extra_functionality=to_mga_model,
+            skip_objective=True,
+        )
 
         n.export_to_netcdf(snakemake.output[0])
 
