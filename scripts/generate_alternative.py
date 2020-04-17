@@ -5,7 +5,7 @@ import re
 
 from pypsa.descriptors import nominal_attrs
 from pypsa.linopt import get_var, linexpr, write_objective, define_constraints
-from pypsa.linopf import lookup
+from pypsa.linopf import lookup, network_lopf, ilopf
 from pypsa.pf import get_switchable_as_dense as get_as_dense
 from pypsa.descriptors import get_extendable_i
 
