@@ -19,6 +19,7 @@ alternative-groups:
 solving:
   options:
     formulation: kirchhoff
+    skip_iterations: true
     clip_p_max_pu: 0.01
   solver:
     name: gurobi
@@ -30,6 +31,7 @@ solving:
     AggFill: 0
     PreDual: 0
     GURO_PAR_BARDENSETHRESH: 200
+    BarHomogeneous: 1
 
 lines_and_links_separate: false
 include_groups: false
