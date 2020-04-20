@@ -143,9 +143,6 @@ def define_mga_constraint(n, sns):
 
     define_constraints(n, lhs, "<=", rhs, "GlobalConstraint", "mu_epsilon")
 
-    # maximum objective value (relative)
-    print(rhs / n.objective)
-
 
 def define_mga_objective(n):
 
