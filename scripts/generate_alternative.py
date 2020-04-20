@@ -7,7 +7,7 @@ from pypsa.descriptors import nominal_attrs
 from pypsa.linopt import get_var, linexpr, write_objective, define_constraints
 from pypsa.linopf import lookup, network_lopf, ilopf
 from pypsa.pf import get_switchable_as_dense as get_as_dense
-from pypsa.descriptors import get_extendable_i
+from pypsa.descriptors import get_extendable_i, get_non_extendable_i
 
 import pandas as pd
 
@@ -59,16 +59,23 @@ def transmission_countries_to_index(n, countries, components):
         return "^" + "$|^".join(index) + "$"  # regex for exact match
 
 
-def calculate_objective_constant(n):
+def objective_constant(n, ext=True, nonext=True):
     """[summary]
     """
 
-    constant = 0
-    for c, attr in nominal_attrs.items():
-        ext_i = get_extendable_i(n, c)
-        constant += n.df(c)[attr][ext_i] @ n.df(c).capital_cost[ext_i]
+    if not (ext or nonext):
+        return 0.0
 
-    n.objective_constant = constant
+    constant = 0.0
+    for c, attr in nominal_attrs.items():
+        i = pd.Index([])
+        if ext:
+            i = i.append(get_extendable_i(n, c))
+        if nonext:
+            i = i.append(get_non_extendable_i(n, c))
+        constant += n.df(c)[attr][i] @ n.df(c).capital_cost[i]
+
+    return constant
 
 
 def process_objective_wildcard(n, mga_obj):
@@ -124,10 +131,15 @@ def define_mga_constraint(n, sns):
             continue
         expr.append(linexpr((cost, get_var(n, c, attr)[cost.index])))
 
-    calculate_objective_constant(n)
-
     lhs = pd.concat(expr).sum()
-    rhs = (1 + epsilon) * n.objective + epsilon * n.objective_constant
+
+    if snakemake.config["include_non_extendable"]:
+        ext_const = objective_constant(n, ext=True, nonext=False)
+        nonext_const = objective_constant(n, ext=False, nonext=True)
+        rhs = (1 + epsilon) * (n.objective + ext_const + nonext_const) - nonext_const
+    else:
+        ext_const = objective_constant(n)
+        rhs = (1 + epsilon) * (n.objective + ext_const)
 
     define_constraints(n, lhs, "<=", rhs, "GlobalConstraint", "mu_epsilon")
 
@@ -173,26 +185,38 @@ def to_mga_model(n, sns):
 
 
 # adapted from pypsa-eur/scripts/solve_network.py
-def solve_network(n, config, solver_log=None, opts='', extra_functionality=None, **kwargs):
-    solver_options = config['solving']['solver'].copy()
-    solver_name = solver_options.pop('name')
-    track_iterations = config['solving']['options'].get('track_iterations', False)
-    min_iterations = config['solving']['options'].get('min_iterations', 4)
-    max_iterations = config['solving']['options'].get('max_iterations', 6)
+def solve_network(
+    n, config, solver_log=None, opts="", extra_functionality=None, **kwargs
+):
+    solver_options = config["solving"]["solver"].copy()
+    solver_name = solver_options.pop("name")
+    track_iterations = config["solving"]["options"].get("track_iterations", False)
+    min_iterations = config["solving"]["options"].get("min_iterations", 4)
+    max_iterations = config["solving"]["options"].get("max_iterations", 6)
 
     # add to network for extra_functionality
     n.config = config
     n.opts = opts
 
-    if config['solving']['options'].get('skip_iterations', False):
-        network_lopf(n, solver_name=solver_name, solver_options=solver_options,
-                     extra_functionality=extra_functionality, **kwargs)
+    if config["solving"]["options"].get("skip_iterations", False):
+        network_lopf(
+            n,
+            solver_name=solver_name,
+            solver_options=solver_options,
+            extra_functionality=extra_functionality,
+            **kwargs
+        )
     else:
-        ilopf(n, solver_name=solver_name, solver_options=solver_options,
-              track_iterations=track_iterations,
-              min_iterations=min_iterations,
-              max_iterations=max_iterations,
-              extra_functionality=extra_functionality, **kwargs)
+        ilopf(
+            n,
+            solver_name=solver_name,
+            solver_options=solver_options,
+            track_iterations=track_iterations,
+            min_iterations=min_iterations,
+            max_iterations=max_iterations,
+            extra_functionality=extra_functionality,
+            **kwargs
+        )
     return n
 
 

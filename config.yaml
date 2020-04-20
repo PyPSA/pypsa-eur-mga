@@ -36,6 +36,7 @@ solving:
 lines_and_links_separate: false
 include_groups: false
 include_hypercube: false
+include_non_extendable: true
 excluded_carriers: [OCGT, CCGT, offwind-ac, offwind-dc]
 
 lines:
