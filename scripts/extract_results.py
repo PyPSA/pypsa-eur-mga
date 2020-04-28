@@ -1,6 +1,5 @@
 import pypsa
 import pandas as pd
-import re
 
 import progressbar as pgb
 pgb.streams.wrap_stderr()
@@ -12,19 +11,14 @@ logging.basicConfig(level="ERROR")
 
 def infer_wildcards_from_fn(fn):
 
-    # TODO adjust to new filenames!
-
     d = {}
-    l = fn.split("/")[-1].replace("storage_units", "storageunits").split("_")[2:]
+    ls = fn.split("/")[-1].split("_")[2:]
 
-    d["clusters"] = l[0]
-    d["ll"] = l[1][1:]
-    d["snapshots"] = l[2][1:] if l[2][1:] != "" else "all"
-    d["epsilon"] = l[4][3:]
-    d["category"] = l[5][4:]
-    d["co2"] = re.findall("[0-9]*\.?[0-9]+$", l[3].split("-")[0])[0]
-    d["tres"] = l[3].split("-")[1]
-    d["type"], d["variable_name"], d["sense"] = l[6][4:-3].split("+")
+    d["clusters"] = ls[0]
+    d["epsilon"] = ls[4][3:]
+    d["category"] = ls[5][4:]
+    d["tres"] = ls[3]
+    d["type"], d["variable_name"], d["sense"] = ls[6][4:-3].split("+")
 
     if d["variable_name"] == "":
         d["variable_name"] = "all"
@@ -131,11 +125,8 @@ if __name__ == "__main__":
 
     ids = [
         "clusters",
-        "ll",
-        "snapshots",
         "epsilon",
         "category",
-        "co2",
         "tres",
         "type",
         "variable_name",
