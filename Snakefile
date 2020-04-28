@@ -12,7 +12,7 @@ subworkflow pypsaeur:
 
 
 def memory(w):
-    factor = 1.5
+    factor = 1.2
     for o in w.opts.split('-'):
         m = re.match(r'^(\d+)h$', o, re.IGNORECASE)
         if m is not None:
