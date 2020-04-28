@@ -124,14 +124,13 @@ rule extract_results:
         line_energy_balance="results/summaries/line_energy_balance.csv",
         link_energy_balance="results/summaries/link_energy_balance.csv"
     script: "scripts/extract_results.py"
-    
+
 rule extract_gini:
     input: input_generate_all_alternatives
     output: "results/summaries/gini.csv"
     script: "scripts/extract_gini.py"
-    
+
 rule extract_curtailment:
     input: input_generate_all_alternatives
     output: "results/summaries/curtailment.csv"
     script: "scripts/extract_curtailment.py"
-    

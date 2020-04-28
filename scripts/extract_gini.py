@@ -40,11 +40,8 @@ if __name__ == "__main__":
 
     ids = [
         "clusters",
-        "ll",
-        "snapshots",
         "epsilon",
         "category",
-        "co2",
         "tres",
         "type",
         "variable_name",
