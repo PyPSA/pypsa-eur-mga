@@ -46,3 +46,39 @@ lines:
 
 links:
   p_nom_max: 20000
+
+plotting:
+  tech_colors:
+    wind: "#072e6e"
+    onwind: "#235ebc"
+    offwind: "#6895dd"
+    offwind-ac: "#6895dd"
+    offwind-dc: "#74c6f2"
+    hydro: "#246e64"
+    PHS: "#08ad97"
+    ror: "#4adbc8"
+    solar: "#f9d002"
+    battery: "#b8ea04"
+    H2: "#ea048a"
+    AC: "#70af1d"
+    DC: "#8a1caf"
+    all-Transmission: "#70af1d"
+    all-StorageUnit: "#ff9000"
+    none: "#dddddd"
+  nice_names:
+    wind: "Wind"
+    onwind: "Onshore Wind"
+    offwind: "Offshore Wind"
+    offwind-ac: "Offshore Wind (AC)"
+    offwind-dc: "Offshore Wind (DC)"
+    hydro: "Hydro Reservoirs"
+    PHS: "Pumped Hydro"
+    ror: "Run of River"
+    solar: "Solar PV"
+    battery: "Battery"
+    H2: "Hydrogen"
+    AC: "HVAC Lines"
+    DC: "HVDC Links"
+    all-Transmission: "Transmission"
+    all-StorageUnit: "Storage"
+    none: "No Dominant Carrier"
