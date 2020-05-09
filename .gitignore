@@ -16,4 +16,5 @@ gurobi.log
 *.pdf
 *.png
 *dconf
+*.vscode
 dependency-graph.png

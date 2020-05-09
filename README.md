@@ -26,19 +26,11 @@ within 10% of the optimum.
 
 ## Installation and Usage
 
-Clone the repository
+Clone the main repository and the PyPSA-Eur submodule
 
 ```bash
-../ % git clone https://git.scc.kit.edu/FN/pypsa-eur-mga.git
+../ % git clone --recurse-submodules https://git.scc.kit.edu/FN/pypsa-eur-mga.git
 ```
-
-and run
-
-```bash
-../pypsa-eur-mga % git submodule update --init
-```
-
-to retrieve the PyPSA-Eur submodule.
 
 Install and activate the `conda` environment with
 
@@ -51,13 +43,16 @@ conda activate pypsa-eur-mga
 
 TODO: workflow chart
 
-- `cluster_time`: Clusters network to `{snapshots}` time periods. If `n.storage_units` are present, they are removed since time series clustering distorts order of snapshots.
 - `solve_base`: Solves the network to optimality using the regular cost-minimisation objective, which serves as reference value for the MGA iterations.
 - `generate_list_of_alternatives`: Generates a list of alternative objectives defining the power system component, its carrier filter, and the optimisation sense as `<COMPONENT>+<CARRIER>+<SENSE>`. Each experiment corresponds to one MGA iteration. This is a [snakemake checkpoint](https://snakemake.readthedocs.io/en/stable/snakefiles/rules.html#data-dependent-conditional-execution).
 - `generate_alternative`: Solves the network to optimality with the original cost-minimisation objective as constraint with the cost minimum plus some slack `{epsilon}` as upper bound. The new objective is built from the `{objective}` wildcard (from `generate_list_of_alternatives`).
 - `extract_results`: Collects and exports results of all near-optimal solutions into several `.csv` files.
 - `extract_curtailment`: Extracts curtailment data into a separate `.csv` file.
 - `extract_gini`: Calculates and exports the Gini coefficient of different near-optimal solutions.
+
+## Plotting
+
+There is some plotting functionality provided in `scripts/plotting` which can be used for example in `scripts/plotting.ipynb`.
 
 ## Results
 

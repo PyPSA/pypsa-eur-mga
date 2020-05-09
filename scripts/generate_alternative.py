@@ -1,186 +1,255 @@
+import pypsa
 import sys
 import os
-import numpy as np
-import pandas as pd
-import logging
-logger = logging.getLogger(__name__)
-import gc
 import re
 
-import pypsa
-from pypsa.descriptors import free_output_series_dataframes
+from pypsa.descriptors import nominal_attrs
+from pypsa.linopt import get_var, linexpr, write_objective, define_constraints
+from pypsa.linopf import lookup, network_lopf, ilopf
+from pypsa.pf import get_switchable_as_dense as get_as_dense
+from pypsa.descriptors import get_extendable_i, get_non_extendable_i
+
+import pandas as pd
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Suppress logging of the slack bus choices
 pypsa.pf.logger.setLevel(logging.WARNING)
 
 from vresutils.benchmark import memory_logger
 
-from pyomo.environ import Constraint, Objective
-from pyomo.core.expr.current import clone_expression
-
 # Add pypsa-eur scripts to path for import
-sys.path.insert(0, os.getcwd()+"/pypsa-eur/scripts")
+sys.path.insert(0, os.getcwd() + "/pypsa-eur/scripts")
 
-from solve_network import solve_network, prepare_network, patch_pyomo_tmpdir
-
-
-def modify_model(n, snapshots, var_type, var_name, obj_sense):
+from solve_network import prepare_network, add_battery_constraints
 
 
-    def encode_objective_as_constraint(n):
-        epsilon = float(snakemake.wildcards.epsilon)
-
-        # adding costs of pre-existing infrastructure for suitable base objective value
-        constant =  (n.links.p_nom * n.links.capital_cost).sum() + \
-            (n.generators.p_nom * n.generators.capital_cost).sum() + \
-            (n.lines.s_nom * n.lines.capital_cost).sum() + \
-            (n.stores.e_nom * n.stores.capital_cost).sum() + \
-            (n.storage_units.p_nom * n.storage_units.capital_cost).sum()
-        
-        expr = n.model.objective.expr + constant <= (1 + epsilon) * (n.objective + constant)
-        n.model.objective_value_slack = Constraint(expr=expr)
+def to_regex(pattern):
+    """[summary]
+    """
+    return "(" + ").*(".join(pattern.split(" ")) + ")"
 
 
-    def set_alternative_objective(n, var_types, var_name, obj_sense):
+def transmission_countries_to_index(n, countries, components):
+    """[summary]
+    """
 
-        if type(var_types) is str:
-            var_types = [var_types]
+    index = []
+    for c in components:
+        cntrs = countries.split(" ")
+        bus_pairs = zip(n.df(c).bus0, n.df(c).bus1)
 
-        n.model.del_component("objective")
+        if len(cntrs) == 1:  # within a country
+            selection = [
+                (cntrs[0] == b0[:2] and cntrs[0] == b1[:2]) for b0, b1 in bus_pairs
+            ]
+        else:  # across countries
+            selection = [
+                (cntrs[0] == b0[:2] and cntrs[1] == b1[:2])
+                or (cntrs[1] == b0[:2] and cntrs[0] == b1[:2])
+                for b0, b1 in bus_pairs
+            ]
+        index += list(n.df(c).loc[selection].index)
 
-        expr = None
-        for var_type in var_types:
-            variables = []
-            for var in getattr(n.model,var_type):
-                
-                # line variables are saved with tuple index ('Line', 'var')
-                if type(var) is tuple:
-                    var_check = var[1]    
-                else:
-                    var_check = var
+    if len(index) == 0:
+        return ""
+    else:
+        return "^" + "$|^".join(index) + "$"  # regex for exact match
 
-                if any(token == var_check for token in var_name.split(' ')):
-                    variables.append(var)
-                elif all(token in var_check for token in var_name.split(' ')):
-                    variables.append(var)
 
-            # translate between pyomo model names and network data names
-            m_to_n = {'link_p_nom': 'links',
-                    'passive_branch_s_nom': 'lines'}
+def objective_constant(n, ext=True, nonext=True):
+    """[summary]
+    """
 
-            if var_type in ['link_p_nom', 'passive_branch_s_nom']:
-                index = var[1] if var_type=='passive_branch_s_nom' else var
-                part_expr = sum(getattr(n,m_to_n[var_type]).length[index]*getattr(n.model,var_type)[var] for var in variables)
-            else:
-                part_expr = sum(getattr(n.model,var_type)[var] for var in variables)
+    if not (ext or nonext):
+        return 0.0
 
-            expr = expr + part_expr if expr is not None else part_expr
+    constant = 0.0
+    for c, attr in nominal_attrs.items():
+        i = pd.Index([])
+        if ext:
+            i = i.append(get_extendable_i(n, c))
+        if nonext:
+            i = i.append(get_non_extendable_i(n, c))
+        constant += n.df(c)[attr][i] @ n.df(c).capital_cost[i]
 
-        n.model.objective = Objective(expr=expr, sense=obj_sense)
+    return constant
 
-        # print objective to console
-        n.model.objective.pprint()
 
-    # warmstart
-    def set_initial_values(n):
+def process_objective_wildcard(n, mga_obj):
+    """[summary]
 
-        for i in n.generators.loc[n.generators.p_nom_extendable].index:
-            n.model.generator_p_nom[i].value = n.generators.loc[i].p_nom_opt
+    Parameters
+    ----------
+    n : pypsa.Network
+    mga_obj : list-like
+        [var_type, pattern, sense]
+    """
 
-        for i in n.storage_units.loc[n.storage_units.p_nom_extendable].index:
-            n.model.storage_p_nom[i].value = n.storage_units.loc[i].p_nom_opt
+    lookup = {
+        "Link": ["Link"],
+        "Line": ["Line"],
+        "Transmission": ["Link", "Line"],
+    }
+    if mga_obj[0] in lookup.keys():
+        mga_obj[0] = lookup[mga_obj[0]]
+        mga_obj[1] = transmission_countries_to_index(n, mga_obj[1], mga_obj[0])
 
-        for i in n.stores.loc[n.stores.e_nom_extendable].index:
-            n.model.store_e_nom[i].value = n.stores.loc[i].e_nom_opt
+    lookup = {"max": -1, "min": 1}
+    mga_obj[2] = lookup[mga_obj[2]]
 
-        for i in n.links.loc[n.links.p_nom_extendable].index:
-            n.model.link_p_nom[i].value = n.links.loc[i].p_nom_opt
+    # attach to network
+    n.mga_obj = mga_obj
 
-        for i in n.lines.loc[n.lines.s_nom_extendable].index:
-            n.model.passive_branch_s_nom['Line',i].value = n.lines.loc[i].s_nom_opt
+    # print mga_obj to console
+    print(mga_obj)
 
-    encode_objective_as_constraint(n)
-    set_alternative_objective(n, var_type, var_name, obj_sense)
-    set_initial_values(n)
+
+def define_mga_constraint(n, sns):
+
+    epsilon = float(snakemake.wildcards.epsilon)
+
+    expr = []
+
+    # operation
+    for c, attr in lookup.query("marginal_cost").index:
+        cost = (
+            get_as_dense(n, c, "marginal_cost", sns)
+            .loc[:, lambda ds: (ds != 0).all()]
+            .mul(n.snapshot_weightings[sns], axis=0)
+        )
+        if cost.empty:
+            continue
+        expr.append(linexpr((cost, get_var(n, c, attr).loc[sns, cost.columns])).stack())
+
+    # investment
+    for c, attr in nominal_attrs.items():
+        cost = n.df(c)["capital_cost"][get_extendable_i(n, c)]
+        if cost.empty:
+            continue
+        expr.append(linexpr((cost, get_var(n, c, attr)[cost.index])))
+
+    lhs = pd.concat(expr).sum()
+
+    if snakemake.config["include_non_extendable"]:
+        ext_const = objective_constant(n, ext=True, nonext=False)
+        nonext_const = objective_constant(n, ext=False, nonext=True)
+        rhs = (1 + epsilon) * (n.objective + ext_const + nonext_const) - nonext_const
+    else:
+        ext_const = objective_constant(n)
+        rhs = (1 + epsilon) * (n.objective + ext_const)
+
+    define_constraints(n, lhs, "<=", rhs, "GlobalConstraint", "mu_epsilon")
+
+
+def define_mga_objective(n):
+
+    components, pattern, sense = n.mga_obj
+
+    if isinstance(components, str):
+        components = [components]
+
+    terms = []
+    for c in components:
+
+        variables = get_var(n, c, nominal_attrs[c]).filter(regex=to_regex(pattern))
+
+        if c in ["Link", "Line"]:
+            coeffs = sense * n.df(c).loc[variables.index, "length"]
+        else:
+            coeffs = sense
+
+        terms.append(linexpr((coeffs, variables)))
+
+    joint_terms = pd.concat(terms)
+
+    write_objective(n, joint_terms)
+
+    # print objective to console
+    print(joint_terms)
+
+
+def to_mga_model(n, sns):
+    """Calls extra functionality modules.
+    """
+    wc = snakemake.wildcards.objective.split("+")
+    process_objective_wildcard(n, wc)
+    define_mga_objective(n)
+    define_mga_constraint(n, sns)
+    add_battery_constraints(n)
+
+
+# adapted from pypsa-eur/scripts/solve_network.py
+def solve_network(
+    n, config, solver_log=None, opts="", extra_functionality=None, **kwargs
+):
+    solver_options = config["solving"]["solver"].copy()
+    solver_name = solver_options.pop("name")
+    track_iterations = config["solving"]["options"].get("track_iterations", False)
+    min_iterations = config["solving"]["options"].get("min_iterations", 4)
+    max_iterations = config["solving"]["options"].get("max_iterations", 6)
+
+    # add to network for extra_functionality
+    n.config = config
+    n.opts = opts
+
+    if config["solving"]["options"].get("skip_iterations", False):
+        network_lopf(
+            n,
+            solver_name=solver_name,
+            solver_options=solver_options,
+            extra_functionality=extra_functionality,
+            **kwargs
+        )
+    else:
+        ilopf(
+            n,
+            solver_name=solver_name,
+            solver_options=solver_options,
+            track_iterations=track_iterations,
+            min_iterations=min_iterations,
+            max_iterations=max_iterations,
+            extra_functionality=extra_functionality,
+            **kwargs
+        )
+    return n
 
 
 if __name__ == "__main__":
-    # Detect running outside of snakemake and mock snakemake for testing
-    if 'snakemake' not in globals():
-        from vresutils.snakemake import MockSnakemake, Dict
-        snakemake = MockSnakemake(
-            wildcards=dict(network='elec', simpl='', clusters='45', lv='1.0', opts='Co2L-3H'),
-            input=["networks/{network}_s{simpl}_{clusters}_lv{lv}_{opts}.nc"],
-            output=["results/networks/s{simpl}_{clusters}_lv{lv}_{opts}.nc"],
-            log=dict(solver="logs/{network}_s{simpl}_{clusters}_lv{lv}_{opts}_solver.log",
-                     python="logs/{network}_s{simpl}_{clusters}_lv{lv}_{opts}_python.log")
-        )
 
-    tmpdir = snakemake.config['solving'].get('tmpdir')
-    if tmpdir is not None:
-        patch_pyomo_tmpdir(tmpdir)
+    logging.basicConfig(
+        filename=snakemake.log.python, level=snakemake.config["logging_level"]
+    )
 
-    logging.basicConfig(filename=snakemake.log.python,
-                        level=snakemake.config['logging_level'])
+    opts = [
+        o
+        for o in snakemake.wildcards.opts.split("-")
+        if not re.match(r"^\d+h$", o, re.IGNORECASE)
+    ]
 
-    opts = [o
-            for o in snakemake.wildcards.opts.split('-')
-            if not re.match(r'^\d+h$', o, re.IGNORECASE)]
+    with memory_logger(
+        filename=getattr(snakemake.log, "memory", None), interval=30.0
+    ) as mem:
 
-    def translate_mga_opts(n, mga_opts):
-        network_type_names = ['generators', 'storage_units', 'stores', 'lines', 'links', 'transmission']
-        model_type_names = ['generator_p_nom', 'storage_p_nom', 'store_e_nom', 'passive_branch_s_nom', 'link_p_nom', ['passive_branch_s_nom', 'link_p_nom']]
-        type_names_dict = dict(zip(network_type_names, model_type_names))
-        sense_dict = {'max': -1, 'min': 1}
-
-        def country_pair_component_names(n, country_ids, components):
-            if type(components) == str:
-                components = [components]
-                
-            index = []
-            for component in components:
-                comp_df = getattr(n, component)
-                cp = country_ids.split(' ')
-                if len(cp) == 1:
-                    selector = [(cp[0] == b0[:2] and cp[0] == b1[:2])
-                                for b0, b1 in zip(comp_df.bus0, comp_df.bus1)]
-                else:
-                    selector = [(cp[0] == b0[:2] and cp[1] == b1[:2]) or 
-                                (cp[1] == b0[:2] and cp[0] == b1[:2])
-                                for b0, b1 in zip(comp_df.bus0, comp_df.bus1)]
-                index += list(comp_df.loc[selector].index)
-
-            return " ".join(index)
-
-        subtypes_lookup = {'lines': 'lines', 'links': 'links', 'transmission': ['links', 'lines']}
-        if mga_opts[0] in subtypes_lookup.keys():
-            mga_opts[1] = country_pair_component_names(n, mga_opts[1], subtypes_lookup[mga_opts[0]])
-        mga_opts[0] = type_names_dict[mga_opts[0]]
-        mga_opts[2] = sense_dict[mga_opts[2]]
-
-        return mga_opts
-
-
-    with memory_logger(filename=getattr(snakemake.log, 'memory', None), interval=30.) as mem:
-        
         n = pypsa.Network(snakemake.input[0])
-        
-        mga_opts = translate_mga_opts(n, snakemake.wildcards.objective.split('+'))
 
-        n = prepare_network(n, solve_opts=snakemake.config['solving']['options'])
-        
-        # catch and tag numerical issues
-        try:
-            n = solve_network(n, 
-                    config=snakemake.config['solving'],
-                    solver_log=snakemake.log.solver,
-                    opts=opts,
-                    extra_functionality=modify_model,
-                    extra_functionality_args=mga_opts,
-                    skip_iterating=True)
-            n.numerical_issue = 0
-        except:
-            n.numerical_issue = 1
+        n = prepare_network(n, solve_opts=snakemake.config["solving"]["options"])
+
+        # # catch and tag numerical issues
+        # try:
+        #     n.numerical_issue = 0
+        # except:
+        #     n.numerical_issue = 1
+        n = solve_network(
+            n,
+            config=snakemake.config,
+            solver_log=snakemake.log.solver,
+            opts=opts,
+            extra_functionality=to_mga_model,
+            skip_objective=True,
+        )
 
         n.export_to_netcdf(snakemake.output[0])
 
