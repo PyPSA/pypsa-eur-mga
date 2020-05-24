@@ -58,7 +58,7 @@ def make_legend_circles_for(sizes, scale=1.0, **kw):
     return [Circle((0, 0), radius=(s / scale) ** 0.5, **kw) for s in sizes]
 
 
-def add_legend(ax, bus_factor, branch_factor):
+def add_legend(n, ax, bus_factor, branch_factor):
 
     handles = []
     labels = []
@@ -182,9 +182,7 @@ def plot_network(n, fn=None):
         link_widths=link_widths,
     )
 
-    add_legend(ax, bus_factor, branch_factor)
+    add_legend(n, ax, bus_factor, branch_factor)
 
     if fn is not None:
         plt.savefig(fn, bbox_inches="tight")
-
-    fig.close()
