@@ -48,7 +48,7 @@ def get_kakwani(n, nbase):
 
 def plot_gini(gini, n, annot=None, fn=None):
 
-    fig, ax = plt.subplots(figsize=(2.3, 2.8))
+    fig, ax = plt.subplots(figsize=(3, 2.8))
     cb_map = ax.scatter(
         gini.gini, gini.tvol, c=gini.epsilon.astype("float") * 100, alpha=0.6
     )
@@ -79,7 +79,7 @@ def plot_gini(gini, n, annot=None, fn=None):
     cb_ax = fig.add_axes([1, 0.1, 0.02, 0.8])
     fig.colorbar(cb_map, cax=cb_ax, label="$\epsilon$ [%]")
 
-    plt.tight_layout()
+    #plt.tight_layout()
 
     if fn is not None:
         plt.savefig(fn, bbox_inches="tight")
