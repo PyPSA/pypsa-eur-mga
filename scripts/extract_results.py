@@ -2,9 +2,11 @@ import pypsa
 import pandas as pd
 
 import progressbar as pgb
+
 pgb.streams.wrap_stderr()
 
 import logging
+
 logger = logging.getLogger(__name__)
 logging.basicConfig(level="ERROR")
 
@@ -123,6 +125,44 @@ def get_energy_balance(n, components):
     return getattr(n, components).groupby("country_pair").energy_redirected.sum()
 
 
+def cumulative_share(n, by="bus"):
+
+    n.loads["load"] = n.loads_t.p.multiply(n.snapshot_weightings, axis=0).sum()
+    n.generators["energy"] = n.generators_t.p.multiply(
+        n.snapshot_weightings, axis=0
+    ).sum()
+
+    if by == "country":
+        n.loads["country"] = n.loads.apply(lambda x: x.bus[:2], axis=1)
+        n.generators["country"] = n.generators.apply(lambda x: x.bus[:2], axis=1)
+
+    energy = n.generators.groupby(by).energy.sum()
+    load = n.loads.groupby(by).load.sum()
+
+    df = pd.concat([(energy / energy.sum()), (load / load.sum())], axis=1)
+    df.sort_values(by="energy", inplace=True)
+
+    return df.cumsum()
+
+
+def get_gini(n):
+    dfc = cumulative_share(n)
+    return 1 - dfc.load.diff().multiply(dfc.energy.rolling(2).sum(), axis=0).sum()
+
+
+def get_curtailment(net):
+    generated = net.generators_t.p.filter(regex="solar|ror|wind", axis=1).sum().sum()
+    possible = (
+        (
+            net.generators_t.p_max_pu
+            * net.generators.filter(regex="solar|ror|wind", axis=0).p_nom_opt
+        )
+        .sum()
+        .sum()
+    )
+    return (possible - generated) / possible * 100
+
+
 if __name__ == "__main__":
 
     ids = [
@@ -148,6 +188,8 @@ if __name__ == "__main__":
     link_transmission_volume = pd.DataFrame(columns=columns)
     line_energy_balance = pd.DataFrame(columns=columns)
     link_energy_balance = pd.DataFrame(columns=columns)
+    gini_results = pd.DataFrame(columns=columns, index=["gini"])
+    curtailment = pd.DataFrame(columns=columns, index=["curtailment"])
 
     widgets = [
         pgb.widgets.Percentage(),
@@ -180,6 +222,8 @@ if __name__ == "__main__":
         link_transmission_volume[(*ids,)] = get_transmission(n, "links", length=True)
         line_energy_balance[(*ids,)] = get_energy_balance(n, "lines")
         link_energy_balance[(*ids,)] = get_energy_balance(n, "links")
+        gini_results[(*ids,)] = get_gini(n)
+        curtailment[(*ids,)] = get_curtailment(n)
         name = k.split("/")[-1][:-3]
         clt.plot_network(n, fn=f"{snakemake.output.maps}/{name}_map.pdf")
 
@@ -193,3 +237,5 @@ if __name__ == "__main__":
     link_transmission_volume.to_csv(snakemake.output.link_volume)
     line_energy_balance.to_csv(snakemake.output.line_energy_balance)
     link_energy_balance.to_csv(snakemake.output.link_energy_balance)
+    gini_results.to_csv(snakemake.output.gini)
+    curtailment.to_csv(snakemake.output.curtailment)

@@ -123,15 +123,7 @@ rule extract_results:
         link_volume="results/summaries/link_volume.csv",
         line_energy_balance="results/summaries/line_energy_balance.csv",
         link_energy_balance="results/summaries/link_energy_balance.csv",
+        curtailment="results/summaries/curtailment.csv",
+        gini="results/summaries/gini.csv",
         maps=directory("graphics/networks")
     script: "scripts/extract_results.py"
-
-rule extract_gini:
-    input: input_generate_all_alternatives
-    output: "results/summaries/gini.csv"
-    script: "scripts/extract_gini.py"
-
-rule extract_curtailment:
-    input: input_generate_all_alternatives
-    output: "results/summaries/curtailment.csv"
-    script: "scripts/extract_curtailment.py"
