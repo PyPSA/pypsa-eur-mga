@@ -15,14 +15,15 @@ from .utils import load_config, get_system_transmission_volume
 opts = load_config()
 
 
-def oneport_space(n_opt, investments, c):
+def oneport_space(n_opt, investments, c, regex=None):
 
-    if c == "all-StorageUnit":
-        regex = "battery|H2"
-    else:
+    if regex is None:
         regex = c
 
-    if c in ["battery", "H2", "all-StorageUnit"]:
+    if regex == "all-StorageUnit":
+        regex = "battery|H2"
+
+    if regex in ["battery", "H2", "battery|H2"]:
         comp = "storage_units"
     else:
         comp = "generators"
@@ -44,7 +45,7 @@ def oneport_space(n_opt, investments, c):
     df[("0.0", "min")] = p_nom_opt
     df[("0.0", "max")] = p_nom_opt
 
-    if c == "all-StorageUnit":
+    if regex == "battery|H2":
         df += (
             n_opt.storage_units.filter(regex="PHS|hydro", axis=0).p_nom_opt.sum() / 1e3
         )
@@ -77,6 +78,8 @@ def subplot_space(
     link_volume,
     ax,
     carrier,
+    other_carrier=None,
+    other_carrier_sense="max",
     xlabel=False,
     ylabel=False,
 ):
@@ -106,6 +109,15 @@ def subplot_space(
 
     ax.set_xticks(np.arange(0, 11, 2))
 
+    if other_carrier is not None:
+        if carrier == "all-Transmission":
+            df = branch_space(n_opt, line_volume, link_volume, other_carrier)
+        else:
+            df = oneport_space(n_opt, investments, other_carrier, carrier)
+        eps = df.epsilon.astype("float") * 100
+        kwargs = {"color": "k", "linestyle": "-"}
+        ax.plot(eps, df[other_carrier_sense], **kwargs)
+
     if carrier == "all-Transmission":
         ax.axhline(
             get_system_transmission_volume(n_opt, "_min"),
@@ -125,26 +137,79 @@ def subplot_space(
         ax.legend(frameon=False)
 
 
-def plot_space(n_opt, investments, line_volume, link_volume, compact=False, fn=None):
+def plot_space(
+    n_opt,
+    investments,
+    line_volume,
+    link_volume,
+    other_carrier=None,
+    other_carrier_sense="max",
+    compact=False,
+    fn=None,
+):
 
     figsize = (5, 9) if compact else (6, 10)
     fix, ax = plt.subplots(4, 2, figsize=figsize, sharey=True, sharex=compact)
 
     args = [n_opt, investments, line_volume, link_volume]
-    kwargs = {"xlabel": not compact, "ylabel": not compact}
-    subplot_space(*args, ax[0, 0], "wind", **kwargs)
-    subplot_space(*args, ax[0, 1], "solar", **kwargs)
-    subplot_space(*args, ax[1, 0], "onwind", **kwargs)
-    subplot_space(*args, ax[1, 1], "offwind", **kwargs)
-    subplot_space(*args, ax[2, 0], "all-StorageUnit", **kwargs)
-    subplot_space(*args, ax[2, 1], "all-Transmission", **kwargs)
-    subplot_space(*args, ax[3, 0], "H2", xlabel=True, ylabel=not compact)
-    subplot_space(*args, ax[3, 1], "battery", xlabel=True, ylabel=not compact)
+    kwargs = {
+        "xlabel": not compact,
+        "ylabel": not compact,
+    }
+    oc_kwargs = {
+        "other_carrier": other_carrier,
+        "other_carrier_sense": other_carrier_sense,
+    }
+    subplot_space(*args, ax[0, 0], "wind", **kwargs, **oc_kwargs)
+    subplot_space(*args, ax[0, 1], "solar", **kwargs, **oc_kwargs)
+    subplot_space(*args, ax[1, 0], "onwind", **kwargs, **oc_kwargs)
+    subplot_space(*args, ax[1, 1], "offwind", **kwargs, **oc_kwargs)
+    subplot_space(*args, ax[2, 0], "all-StorageUnit", **kwargs, **oc_kwargs)
+    subplot_space(*args, ax[2, 1], "all-Transmission", **kwargs, **oc_kwargs)
+    subplot_space(*args, ax[3, 0], "H2", xlabel=True, ylabel=not compact, **oc_kwargs)
+    subplot_space(
+        *args, ax[3, 1], "battery", xlabel=True, ylabel=not compact, **oc_kwargs
+    )
 
     plt.tight_layout()
 
     hspace = 0.1 if compact else 0.35
     plt.subplots_adjust(hspace=hspace)
+
+    if fn is not None:
+        plt.savefig(fn, bbox_inches="tight")
+
+
+def plot_space_presentation(
+    n_opt,
+    investments,
+    line_volume,
+    link_volume,
+    other_carrier=None,
+    other_carrier_sense="max",
+    fn=None,
+):
+
+    figsize = (11.5, 6)
+    fix, ax = plt.subplots(2, 4, figsize=figsize, sharey=True, sharex=False)
+
+    args = [n_opt, investments, line_volume, link_volume]
+    kwargs = {
+        "xlabel": True,
+        "ylabel": True,
+        "other_carrier": other_carrier,
+        "other_carrier_sense": other_carrier_sense,
+    }
+    subplot_space(*args, ax[0, 0], "wind", **kwargs)
+    subplot_space(*args, ax[1, 0], "solar", **kwargs)
+    subplot_space(*args, ax[0, 1], "onwind", **kwargs)
+    subplot_space(*args, ax[1, 1], "offwind", **kwargs)
+    subplot_space(*args, ax[0, 2], "all-StorageUnit", **kwargs)
+    subplot_space(*args, ax[1, 2], "all-Transmission", **kwargs)
+    subplot_space(*args, ax[0, 3], "H2", **kwargs)
+    subplot_space(*args, ax[1, 3], "battery", **kwargs)
+
+    plt.tight_layout()
 
     if fn is not None:
         plt.savefig(fn, bbox_inches="tight")

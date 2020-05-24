@@ -6,7 +6,7 @@ __author__ = "Fabian Neumann (KIT)"
 __copyright__ = "Copyright 2019-2020 Fabian Neumann (KIT), GNU GPL 3"
 
 from .bar import plot_capacity_bar, plot_cost_bar
-from .boundaries import plot_space
+from .boundaries import plot_space, plot_space_presentation
 from .boxplots import plot_curated_boxplots, plot_plain_boxplot
 from .dominance import plot_dominance
 from .gini import plot_lorentz, plot_gini
