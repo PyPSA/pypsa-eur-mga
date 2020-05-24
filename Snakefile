@@ -122,7 +122,8 @@ rule extract_results:
         line_volume="results/summaries/line_volume.csv",
         link_volume="results/summaries/link_volume.csv",
         line_energy_balance="results/summaries/line_energy_balance.csv",
-        link_energy_balance="results/summaries/link_energy_balance.csv"
+        link_energy_balance="results/summaries/link_energy_balance.csv",
+        maps=directory("graphics/networks")
     script: "scripts/extract_results.py"
 
 rule extract_gini:

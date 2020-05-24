@@ -186,3 +186,5 @@ def plot_network(n, fn=None):
 
     if fn is not None:
         plt.savefig(fn, bbox_inches="tight")
+
+    fig.close()

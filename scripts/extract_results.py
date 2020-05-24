@@ -8,6 +8,8 @@ import logging
 logger = logging.getLogger(__name__)
 logging.basicConfig(level="ERROR")
 
+from plotting import collection as clt
+
 
 def infer_wildcards_from_fn(fn):
 
@@ -178,6 +180,8 @@ if __name__ == "__main__":
         link_transmission_volume[(*ids,)] = get_transmission(n, "links", length=True)
         line_energy_balance[(*ids,)] = get_energy_balance(n, "lines")
         link_energy_balance[(*ids,)] = get_energy_balance(n, "links")
+        name = k.split("/")[-1][:-3]
+        clt.plot_network(n, fn=f"{snakemake.output.maps}/{name}_map.pdf")
 
     investment_results.to_csv(snakemake.output.investments)
     energy_mix.to_csv(snakemake.output.energy)
