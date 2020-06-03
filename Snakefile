@@ -66,43 +66,64 @@ rule generate_alternative:
     resources: mem=memory
     script: "scripts/generate_alternative.py"
 
-# generates list of inputs from alternatives list
-def input_generate_all_alternatives(w):
-    wildcards_sets = [
+
+def get_wildcard_sets(config):
+    wildcard_sets = [
         {**config['scenario-totals'], **config['alternative-totals']}
     ]
     if config['include_groups']:
-        wildcards_sets.append(
+        wildcard_sets.append(
             {**config['scenario-groups'], **config['alternative-groups']}
         )
     if config['include_hypercube']:
-        wildcards_sets.append(
+        wildcard_sets.append(
             {**config['scenario-hypercube'], **config['alternative-hypercube']}
         )
+    return wildcard_sets
+
+
+def input_generate_clusters_alternatives(w):
+    wildcard_sets = get_wildcard_sets(config)
     input = []
-    for wildcards in wildcards_sets:
-        for cluster in wildcards['clusters']:
-            for opts in wildcards['opts']:
-                for epsilon in wildcards['epsilon']:
-                    for category in wildcards['category']:
-                        alternatives = checkpoints.generate_list_of_alternatives.get(
-                            clusters=cluster,
-                            opts=opts,
-                            category=category).output[0]
-                        obj_list = []
-                        with open(alternatives, "r") as f:  
-                            for line in f:
-                                obj_list.append(line.strip())
-                        for obj in obj_list:              
-                            input.append(
-                                "results/networks/elec_s_{clusters}_ec_lcopt_{opts}_tol{epsilon}_cat-{category}_obj-{objective}.nc".format(
-                                    clusters=cluster,
-                                    opts=opts,
-                                    epsilon=epsilon,
-                                    objective=obj,
-                                    category=category)
-                            )
+    for wildcards in wildcard_sets:
+        for clusters in wildcards["clusters"]:
+            if int(clusters) == int(w.clusters):
+                for opts in wildcards['opts']:
+                    for epsilon in wildcards['epsilon']:
+                        for category in wildcards['category']:
+                            alternatives = checkpoints.generate_list_of_alternatives.get(
+                                clusters=w.clusters,
+                                opts=opts,
+                                category=category).output[0]
+                            obj_list = []
+                            with open(alternatives, "r") as f:  
+                                for line in f:
+                                    obj_list.append(line.strip())
+                            for obj in obj_list:              
+                                input.append(
+                                    "results/networks/elec_s_{clusters}_ec_lcopt_{opts}_tol{epsilon}_cat-{category}_obj-{objective}.nc".format(
+                                        clusters=w.clusters,
+                                        opts=opts,
+                                        epsilon=epsilon,
+                                        objective=obj,
+                                        category=category)
+                                )
     return input
+
+
+def input_generate_all_alternatives(w):
+    categories = ["totals"]
+    if config["include_groups"]: categories.append("groups")
+    if config["include_hypercube"]: categories.append("hypercube")
+    all_clusters = set().union(*[config[f"scenario-{c}"]["clusters"] for c in categories])
+    input = []
+    for clusters in all_clusters:
+        wcs = snakemake.io.Wildcards(fromdict={"clusters": clusters})
+        input.extend(
+            input_generate_clusters_alternatives(wcs)
+        )
+    return input
+
 
 rule generate_all_alternatives:
     input: input_generate_all_alternatives
@@ -111,19 +132,23 @@ rule generate_all_alternatives:
 # EVALUATION
 
 rule extract_results:
-    input: input_generate_all_alternatives
+    input: input_generate_clusters_alternatives
     output:
-        investments="results/summaries/investments.csv",
-        energy="results/summaries/energy.csv",
-        storage_capacity="results/summaries/storage_capacity.csv",
-        generation_capacity="results/summaries/generation_capacity.csv",
-        line_capacity="results/summaries/line_capacity.csv",
-        link_capacity="results/summaries/link_capacity.csv",
-        line_volume="results/summaries/line_volume.csv",
-        link_volume="results/summaries/link_volume.csv",
-        line_energy_balance="results/summaries/line_energy_balance.csv",
-        link_energy_balance="results/summaries/link_energy_balance.csv",
-        curtailment="results/summaries/curtailment.csv",
-        gini="results/summaries/gini.csv",
-        maps=directory("graphics/networks")
+        investments="results/summaries/{clusters}/investments.csv",
+        energy="results/summaries/{clusters}/energy.csv",
+        storage_capacity="results/summaries/{clusters}/storage_capacity.csv",
+        generation_capacity="results/summaries/{clusters}/generation_capacity.csv",
+        line_capacity="results/summaries/{clusters}/line_capacity.csv",
+        link_capacity="results/summaries/{clusters}/link_capacity.csv",
+        line_volume="results/summaries/{clusters}/line_volume.csv",
+        link_volume="results/summaries/{clusters}/link_volume.csv",
+        line_energy_balance="results/summaries/{clusters}/line_energy_balance.csv",
+        link_energy_balance="results/summaries/{clusters}/link_energy_balance.csv",
+        curtailment="results/summaries/{clusters}/curtailment.csv",
+        gini="results/summaries/{clusters}/gini.csv",
+        maps=directory("graphics/{clusters}/networks")
     script: "scripts/extract_results.py"
+
+
+rule extract_all_results:
+    input: expand("results/summaries/{clusters}/investments.csv", clusters=config["scenario-totals"]["clusters"])
