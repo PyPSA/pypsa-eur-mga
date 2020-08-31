@@ -1,4 +1,5 @@
 from itertools import product
+from numpy import unique
 
 configfile: "config.yaml"
 
@@ -51,8 +52,47 @@ rule solve_all_bases:
 # based on the variables of the original problem the search directions
 # of the MGA iterations are inferred.
 
+def get_wildcard_sets(config):
+    wildcard_sets = [
+        {**config['scenario-totals'], **config['alternative-totals']}
+    ]
+    if config['include_groups']:
+        wildcard_sets.append(
+            {**config['scenario-groups'], **config['alternative-groups']}
+        )
+    if config['include_hypercube']:
+        wildcard_sets.append(
+            {**config['scenario-hypercube'], **config['alternative-hypercube']}
+        )
+    return wildcard_sets
+
+
+def add_cost_opts(wildcards_opts):
+    if "cost-uncertainty" not in config.keys():
+        return wildcards_opts
+    factors = config["cost-uncertainty"]
+    carrier, values = zip(*factors.items())
+    cost_sets = [dict(zip(carrier, v)) for v in product(*values)]
+
+    new_opts = []
+    for opts in wildcards_opts:
+        for cost_set in cost_sets:
+            cost_opts = "-".join([f"{c}+{v}" for c, v in cost_set.items()])
+            new_opts.append(f"{opts}-{cost_opts}")
+    
+    return new_opts
+
+
+def get_checkpoint_opts(config):
+    wcs_set = get_wildcard_sets(config)
+    opts = []
+    for wcs in wcs_set:
+        opts.extend(add_cost_opts(wcs["opts"]))
+    return unique(opts)
+    
+
 checkpoint generate_list_of_alternatives:
-    input: "results/networks/elec_s_{clusters}_ec_lcopt_{opts}.nc"
+    input: expand("results/networks/elec_s_{clusters}_ec_lcopt_{opts}.nc", opts=get_checkpoint_opts(config), allow_missing=True)
     output: "results/alternatives/elec_s_{clusters}_ec_lcopt_{opts}_cat-{category}.txt"
     script: "scripts/generate_list_of_alternatives.py"
 
@@ -69,44 +109,13 @@ rule generate_alternative:
     script: "scripts/generate_alternative.py"
 
 
-def get_wildcard_sets(config):
-    wildcard_sets = [
-        {**config['scenario-totals'], **config['alternative-totals']}
-    ]
-    if config['include_groups']:
-        wildcard_sets.append(
-            {**config['scenario-groups'], **config['alternative-groups']}
-        )
-    if config['include_hypercube']:
-        wildcard_sets.append(
-            {**config['scenario-hypercube'], **config['alternative-hypercube']}
-        )
-    return wildcard_sets
-
-
-def append_cost_uncertainty_opts(wildcards_opts):
-    factors = config["cost-uncertainty"]
-    carrier, values = zip(*factors.items())
-    cost_sets = [dict(zip(carrier, v)) for v in product(*values)]
-
-    new_opts = []
-    for opts in wildcards_opts:
-        for cost_set in cost_sets:
-            cost_opts = "-".join([f"{c}+{v}" for c, v in cost_set.items()])
-            new_opts.append(f"{opts}-{cost_opts}")
-    
-    return new_opts
-
-
 def input_generate_clusters_alternatives(w):
     wildcard_sets = get_wildcard_sets(config)
     input = []
     for wildcards in wildcard_sets:
         for clusters in wildcards["clusters"]:
             if int(clusters) == int(w.clusters):
-                wildcards_opts = wildcards["opts"]
-                if "cost-uncertainty" in config.keys():
-                    wildcards_opts = append_cost_uncertainty_opts(wildcards_opts)
+                wildcards_opts = add_cost_opts(wildcards["opts"])
                 for opts in wildcards_opts:
                     for epsilon in wildcards['epsilon']:
                         for category in wildcards['category']:
