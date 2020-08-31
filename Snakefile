@@ -1,3 +1,5 @@
+from itertools import product
+
 configfile: "config.yaml"
 
 wildcard_constraints:
@@ -82,13 +84,30 @@ def get_wildcard_sets(config):
     return wildcard_sets
 
 
+def append_cost_uncertainty_opts(wildcards_opts):
+    factors = config["cost-uncertainty"]
+    carrier, values = zip(*factors.items())
+    cost_sets = [dict(zip(carrier, v)) for v in product(*values)]
+
+    new_opts = []
+    for opts in wildcards_opts:
+        for cost_set in cost_sets:
+            cost_opts = "-".join([f"{c}+{v}" for c, v in cost_set.items()])
+            new_opts.append(f"{opts}-{cost_opts}")
+    
+    return new_opts
+
+
 def input_generate_clusters_alternatives(w):
     wildcard_sets = get_wildcard_sets(config)
     input = []
     for wildcards in wildcard_sets:
         for clusters in wildcards["clusters"]:
             if int(clusters) == int(w.clusters):
-                for opts in wildcards['opts']:
+                wildcards_opts = wildcards["opts"]
+                if "cost-uncertainty" in config.keys():
+                    wildcards_opts = append_cost_uncertainty_opts(wildcards_opts)
+                for opts in wildcards_opts:
                     for epsilon in wildcards['epsilon']:
                         for category in wildcards['category']:
                             alternatives = checkpoints.generate_list_of_alternatives.get(
