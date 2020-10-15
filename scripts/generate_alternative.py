@@ -107,9 +107,10 @@ def process_objective_wildcard(n, mga_obj):
     print(mga_obj)
 
 
-def define_mga_constraint(n, sns):
+def define_mga_constraint(n, sns, epsilon=None):
 
-    epsilon = float(snakemake.wildcards.epsilon)
+    if epsilon is None:
+        epsilon = float(snakemake.wildcards.epsilon)
 
     expr = []
 
@@ -133,7 +134,7 @@ def define_mga_constraint(n, sns):
 
     lhs = pd.concat(expr).sum()
 
-    if snakemake.config["include_non_extendable"]:
+    if snakemake.config.get("include_non_extendable", True):
         ext_const = objective_constant(n, ext=True, nonext=False)
         nonext_const = objective_constant(n, ext=False, nonext=True)
         rhs = (1 + epsilon) * (n.objective + ext_const + nonext_const) - nonext_const
