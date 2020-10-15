@@ -107,10 +107,25 @@ def process_objective_wildcard(n, mga_obj):
     print(mga_obj)
 
 
-def define_mga_constraint(n, sns, epsilon=None):
+def define_mga_constraint(n, sns, epsilon=None, with_fix=None):
+    """Build constraint defining near-optimal feasible space
+
+    Parameters
+    ----------
+    n : pypsa.Network
+    sns : Series|list-like
+        snapshots
+    epsilon : float, optional
+        Allowed added cost compared to least-cost solution, by default None
+    with_fix : bool, optional
+        Calculation of allowed cost penalty should include cost of non-extendable components, by default None
+    """
 
     if epsilon is None:
         epsilon = float(snakemake.wildcards.epsilon)
+
+    if with_fix is None:
+        with_fix = snakemake.config.get("include_non_extendable", True)
 
     expr = []
 
@@ -134,7 +149,7 @@ def define_mga_constraint(n, sns, epsilon=None):
 
     lhs = pd.concat(expr).sum()
 
-    if snakemake.config.get("include_non_extendable", True):
+    if with_fix:
         ext_const = objective_constant(n, ext=True, nonext=False)
         nonext_const = objective_constant(n, ext=False, nonext=True)
         rhs = (1 + epsilon) * (n.objective + ext_const + nonext_const) - nonext_const
