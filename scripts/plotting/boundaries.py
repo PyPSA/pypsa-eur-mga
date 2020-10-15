@@ -175,6 +175,8 @@ def plot_space(
 
     hspace = 0.1 if compact else 0.35
     plt.subplots_adjust(hspace=hspace)
+    
+    plt.ylim([-50,1300])
 
     if fn is not None:
         plt.savefig(fn, bbox_inches="tight")
@@ -210,6 +212,8 @@ def plot_space_presentation(
     subplot_space(*args, ax[1, 3], "battery", **kwargs)
 
     plt.tight_layout()
+    
+    plt.ylim([-50,1300])
 
     if fn is not None:
         plt.savefig(fn, bbox_inches="tight")

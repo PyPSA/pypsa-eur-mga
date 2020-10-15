@@ -75,7 +75,7 @@ def add_legend(n, ax, bus_factor, branch_factor):
         frameon=False,
         labelspacing=0.8,
         handletextpad=1.5,
-        title="HVAC Line Capacity",
+        title="HVAC Line Expansion",
     )
     ax.add_artist(l1)
 
@@ -96,7 +96,7 @@ def add_legend(n, ax, bus_factor, branch_factor):
         frameon=False,
         labelspacing=0.8,
         handletextpad=1.5,
-        title="HVDC Link Capacity",
+        title="HVDC Link Expansion",
     )
     ax.add_artist(l2)
 
@@ -169,18 +169,19 @@ def plot_network(n, fn=None):
         ax=ax,
         bus_sizes=bus_sizes,
         color_geomap=True,
-        bus_alpha=0.7,
-        line_widths=line_widths_opt,
-        line_colors="#dddddd",
-    )
-
-    n.plot(
-        ax=ax,
-        geomap=False,
-        bus_sizes=0,
+        bus_alpha=0.8,
         line_widths=line_widths,
         link_widths=link_widths,
+        #line_colors="#dddddd",
     )
+
+    #n.plot(
+    #    ax=ax,
+    #    geomap=False,
+    #    bus_sizes=0,
+    #    line_widths=line_widths,
+    #    link_widths=link_widths,
+    #)
 
     add_legend(n, ax, bus_factor, branch_factor)
 
