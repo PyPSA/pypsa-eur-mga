@@ -174,7 +174,7 @@ def define_mga_objective(n):
 
         variables = get_var(n, c, nominal_attrs[c]).filter(regex=to_regex(pattern))
 
-        if c in ["Link", "Line"]:
+        if c in ["Link", "Line"] and pattern in ["", "LN|LK", "LK|LN"]:
             coeffs = sense * n.df(c).loc[variables.index, "length"]
         else:
             coeffs = sense
