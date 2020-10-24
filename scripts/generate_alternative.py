@@ -53,7 +53,9 @@ def transmission_countries_to_index(n, countries, components):
             ]
         index += list(n.df(c).loc[selection].index)
 
-    if len(index) == 0:
+    if len(components) > 1 and countries == "":
+        return "LN|LK"
+    elif len(index) == 0:
         return ""
     else:
         return "^" + "$|^".join(index) + "$"  # regex for exact match
