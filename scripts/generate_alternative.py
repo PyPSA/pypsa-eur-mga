@@ -91,7 +91,6 @@ def process_objective_wildcard(n, mga_obj):
     """
 
     lookup = {
-        "Link": ["Link"],
         "Line": ["Line"],
         "Transmission": ["Link", "Line"],
     }
